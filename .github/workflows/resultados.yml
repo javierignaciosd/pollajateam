@@ -16,7 +16,21 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Ejecutar actualización
+      - name: Ejecutar actualización de resultados y marcador vivo
         env:
           FD_TOKEN: ${{ secrets.FD_TOKEN }}
         run: python update_results.py
+
+      - name: Ejecutar actualización de cuotas Odds-API.io
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          ODDS_BOOKMAKERS: ${{ vars.ODDS_BOOKMAKERS }}
+        run: |
+          if [ -z "$ODDS_API_KEY" ]; then
+            echo "ODDS_API_KEY no configurado. Se omite actualización de cuotas."
+            exit 0
+          fi
+          if [ -z "$ODDS_BOOKMAKERS" ]; then
+            export ODDS_BOOKMAKERS="Bet365,Unibet,SingBet,Pinnacle,Betfair"
+          fi
+          python update_odds.py
