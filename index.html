@@ -1309,6 +1309,66 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
   }
 }
 
+
+
+/* ===== v7.17 navegación por detrás del encabezado + botón volver arriba ===== */
+.bar{
+  z-index:500!important;
+}
+.navwrap{
+  z-index:20!important; /* al hacer scroll pasa por detrás del encabezado sticky */
+}
+.navwrap.open{
+  z-index:120!important; /* menú sobre contenido, pero bajo el encabezado */
+}
+.navwrap .tabs.nav-menu{
+  z-index:120!important;
+}
+.toTopBtn{
+  position:fixed;
+  right:22px;
+  bottom:26px;
+  width:48px;
+  height:48px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background:linear-gradient(180deg,rgba(232,39,124,.95),rgba(17,31,82,.95));
+  color:#fff;
+  font-family:'Saira Condensed';
+  font-weight:900;
+  font-size:30px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 14px 34px rgba(0,0,0,.35);
+  cursor:pointer;
+  z-index:160;
+  opacity:0;
+  pointer-events:none;
+  transform:translateY(10px) scale(.96);
+  transition:opacity .18s ease, transform .18s ease, border-color .18s ease;
+}
+.toTopBtn.show{
+  opacity:1;
+  pointer-events:auto;
+  transform:translateY(0) scale(1);
+}
+.toTopBtn:hover{
+  border-color:rgba(43,227,139,.55);
+  transform:translateY(-2px) scale(1.02);
+}
+@media (max-width:760px){
+  .toTopBtn{
+    right:18px;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 88px);
+    width:52px;
+    height:52px;
+    font-size:32px;
+    z-index:180;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1437,6 +1497,8 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
   </details>
   <footer>Predicciones homologadas a orden Local–Visita · Diseño original inspirado en el mundial · Banderas: flagcdn.com</footer>
 </div>
+
+<button class="toTopBtn" id="toTopBtn" type="button" aria-label="Volver arriba">↑</button>
 
 <div class="modal" id="modal"><div class="mcard"><button class="mclose" id="mclose">✕</button><div id="mbody"></div></div></div>
 
@@ -2445,6 +2507,15 @@ document.getElementById('resetBtn').addEventListener('click',()=>{
   if(confirm('¿Borrar TODOS los resultados cargados? Afecta a todos.')){
     if(backend==='firebase')db.ref('polla/results').remove(); else {results={};saveLocal();renderAll();}
   }});
+const toTopBtn=document.getElementById('toTopBtn');
+function syncToTopBtn(){
+  if(!toTopBtn)return;
+  toTopBtn.classList.toggle('show', window.scrollY>520);
+}
+window.addEventListener('scroll', syncToTopBtn, {passive:true});
+toTopBtn?.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+syncToTopBtn();
+
 document.getElementById('exportBtn').addEventListener('click',()=>{
   const rows=standings();let csv='Posicion,Jugador,Puntos,Exactos,Ganador+Dif,Solo Ganador,Nada\n';let lp=null,lpos=0;
   rows.forEach((r,i)=>{const pos=(r.pts===lp)?lpos:(i+1);lp=r.pts;lpos=pos;csv+=`${pos},"${r.nm}",${r.pts},${r.exact},${r.gandif},${r.gana},${r.nada}\n`;});
