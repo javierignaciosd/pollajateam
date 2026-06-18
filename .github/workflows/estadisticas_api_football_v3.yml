@@ -1,0 +1,27 @@
+name: Actualizar estadísticas avanzadas Polla 2026
+
+on:
+  schedule:
+    # Cada 3 horas para respetar mejor el límite gratuito de API-FOOTBALL.
+    - cron: "12 */3 * * *"
+  workflow_dispatch:
+
+jobs:
+  update-details:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Actualizar detalles, goleadores y asistencias
+        run: python update_details_api_football.py
+        env:
+          APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
+          APIFOOTBALL_LEAGUE: "1"
+          APIFOOTBALL_SEASON: "2026"
+          MAX_DETAILS_MATCHES: "2"
