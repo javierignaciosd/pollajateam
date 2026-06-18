@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 """
-Carga detalles avanzados de partidos para Polla '26 desde API-FOOTBALL / API-SPORTS.
+Actualiza estadísticas avanzadas de la Polla '26 desde API-FOOTBALL / API-SPORTS.
 
-Qué escribe en Firebase:
-  /polla/meta/<idx>                -> fecha y estadio, usando API-FOOTBALL como respaldo/complemento
-  /polla/results/<idx>             -> resultado final si API-FOOTBALL ya lo tiene y football-data no lo cargó
-  /polla/details/<idx>             -> eventos, estadísticas y alineaciones del partido
-  /polla/tournament/topscorers     -> goleadores del torneo
-  /polla/tournament/topassists     -> asistidores del torneo
-  /polla/apiFootballLastUpdate     -> resumen técnico de última ejecución
+Escribe en Firebase:
+  /polla/meta/<idx>                -> fecha y estadio
+  /polla/results/<idx>             -> marcador final de respaldo
+  /polla/details/<idx>             -> eventos, estadísticas y alineaciones
+  /polla/tournament                -> goleadores y asistidores
+  /polla/apiFootballLastUpdate     -> diagnóstico completo de la última ejecución
 
 Variables de entorno en GitHub Actions:
-  APIFOOTBALL_KEY    -> API key de API-FOOTBALL / API-SPORTS. También acepta API_FOOTBALL_KEY o APISPORTS_KEY.
-  APIFOOTBALL_LEAGUE -> opcional. Para FIFA World Cup normalmente es 1.
-  APIFOOTBALL_SEASON -> opcional. Para Mundial 2026: 2026.
-  MAX_DETAILS_MATCHES-> opcional. Límite de partidos a enriquecer por corrida. Default 2.
-  FORCE_TOPS         -> opcional. Si es "1", fuerza actualización de goleadores/asistidores.
+  APIFOOTBALL_KEY    -> API key de API-FOOTBALL / API-SPORTS
+  APIFOOTBALL_LEAGUE -> opcional. Para FIFA World Cup normalmente es 1
+  APIFOOTBALL_SEASON -> opcional. Para Mundial 2026: 2026
+  MAX_DETAILS_MATCHES-> opcional. Límite de partidos a enriquecer por corrida. Default 4
+  FORCE_TOPS         -> opcional. Si es "1", fuerza actualización de goleadores/asistencias
 """
 
 import os
@@ -36,11 +35,12 @@ API_KEY = (
 ).strip()
 LEAGUE = int(os.environ.get("APIFOOTBALL_LEAGUE", "1"))
 SEASON = int(os.environ.get("APIFOOTBALL_SEASON", "2026"))
-MAX_DETAILS_MATCHES = int(os.environ.get("MAX_DETAILS_MATCHES", "2"))
+MAX_DETAILS_MATCHES = int(os.environ.get("MAX_DETAILS_MATCHES", "4"))
 FORCE_TOPS = os.environ.get("FORCE_TOPS", "").strip() == "1"
 
+# Si la key no existe, dejamos un diagnóstico en stdout y salimos sin fallar el Action.
 if not API_KEY:
-    print("APIFOOTBALL_KEY no está definido. Se omite carga de estadísticas avanzadas.")
+    print("APIFOOTBALL_KEY no está definido. Crea el secreto APIFOOTBALL_KEY en GitHub Actions.")
     raise SystemExit(0)
 
 # idx -> local, visita en nombres normalizados de tu polla
@@ -66,15 +66,15 @@ FIX = [
 ]
 
 ALIAS = {
-    "mexico": "mexico", "south africa": "sudafrica", "rsa": "sudafrica", "sudafrica": "sudafrica",
+    "mexico": "mexico", "méxico": "mexico", "south africa": "sudafrica", "rsa": "sudafrica", "sudafrica": "sudafrica",
     "korea republic": "corea del sur", "south korea": "corea del sur", "republic of korea": "corea del sur", "korea, republic of": "corea del sur",
     "czechia": "republica checa", "czech republic": "republica checa", "republica checa": "republica checa",
     "switzerland": "suiza", "suiza": "suiza", "bosnia and herzegovina": "bosnia y herzegovina", "bosniaherzegovina": "bosnia y herzegovina",
     "canada": "canada", "qatar": "qatar", "united states": "estados unidos", "usa": "estados unidos", "united states of america": "estados unidos",
     "australia": "australia", "turkey": "turquia", "turkiye": "turquia", "türkiye": "turquia", "paraguay": "paraguay",
     "scotland": "escocia", "morocco": "marruecos", "brazil": "brasil", "haiti": "haiti", "netherlands": "paises bajos", "holland": "paises bajos",
-    "sweden": "suecia", "germany": "alemania", "ivory coast": "costa de marfil", "cote divoire": "costa de marfil", "cote d ivoire": "costa de marfil",
-    "ecuador": "ecuador", "curacao": "curazao", "tunisia": "tunez", "japan": "japon", "spain": "espana", "saudi arabia": "arabia saudita",
+    "sweden": "suecia", "germany": "alemania", "ivory coast": "costa de marfil", "cote divoire": "costa de marfil", "cote d ivoire": "costa de marfil", "côte d'ivoire": "costa de marfil",
+    "ecuador": "ecuador", "curacao": "curazao", "curaçao": "curazao", "tunisia": "tunez", "japan": "japon", "spain": "espana", "saudi arabia": "arabia saudita",
     "belgium": "belgica", "iran": "iran", "ir iran": "iran", "uruguay": "uruguay", "cape verde": "cabo verde", "cabo verde": "cabo verde",
     "new zealand": "nueva zelanda", "egypt": "egipto", "argentina": "argentina", "austria": "austria", "france": "francia", "iraq": "irak",
     "norway": "noruega", "senegal": "senegal", "jordan": "jordania", "algeria": "argelia", "portugal": "portugal", "uzbekistan": "uzbekistan",
@@ -83,10 +83,12 @@ ALIAS = {
 }
 
 PAIR = {frozenset((h, a)): (idx, h, a) for idx, h, a in FIX}
-
 LIVE_STATUS = {"1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT"}
 FINAL_STATUS = {"FT", "AET", "PEN"}
 PRE_STATUS = {"NS", "TBD"}
+
+api_calls = 0
+api_errors = []
 
 
 def norm(s: str) -> str:
@@ -108,10 +110,10 @@ def canon(*names):
     return None
 
 
-def req_json(url, *, method="GET", data=None, headers=None, timeout=35):
+def req_json(url, *, method="GET", data=None, headers=None, timeout=45):
     body = None if data is None else json.dumps(data, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=body, method=method, headers=headers or {})
-    if body is not None and "Content-Type" not in req.headers:
+    if body is not None:
         req.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(req, timeout=timeout) as r:
         raw = r.read().decode("utf-8")
@@ -119,9 +121,17 @@ def req_json(url, *, method="GET", data=None, headers=None, timeout=35):
 
 
 def api_get(path, params):
+    global api_calls
+    api_calls += 1
     qs = urllib.parse.urlencode(params)
     url = f"{API_BASE}{path}?{qs}"
-    return req_json(url, headers={"x-apisports-key": API_KEY})
+    payload = req_json(url, headers={"x-apisports-key": API_KEY})
+    errs = payload.get("errors") if isinstance(payload, dict) else None
+    has_errors = bool(errs) and errs != []
+    if has_errors:
+        api_errors.append({"endpoint": path, "params": params, "errors": errs})
+        print(f"API ERROR {path} {params}: {errs}")
+    return payload if isinstance(payload, dict) else {"response": [], "errors": {"invalid": "Respuesta no JSON"}}
 
 
 def fb_url(path):
@@ -223,7 +233,6 @@ def simplify_top_players(resp, kind):
             "appearances": games.get("appearences") or games.get("appearances") or 0,
             "minutes": games.get("minutes") or 0,
         })
-    # el endpoint ya viene ordenado, pero reforzamos por si cambia
     if kind == "assists":
         out.sort(key=lambda x: (x.get("assists") or 0, x.get("goals") or 0), reverse=True)
     else:
@@ -231,62 +240,84 @@ def simplify_top_players(resp, kind):
     return out[:20]
 
 
+def should_update_details(status, dt, cached, now):
+    # Evita que los primeros partidos sin cobertura bloqueen siempre los siguientes.
+    last_try = iso_to_dt((cached or {}).get("updatedAt"))
+    if last_try and (now - last_try) < timedelta(hours=6) and not (status in LIVE_STATUS):
+        return False
+    if status in LIVE_STATUS:
+        return True
+    if status in PRE_STATUS and dt:
+        return timedelta(hours=-2) <= (dt - now) <= timedelta(hours=8)
+    if status in FINAL_STATUS:
+        if not cached:
+            return True
+        if not cached.get("isFinal"):
+            return True
+        if not cached.get("hasAnyAdvancedData"):
+            return True
+    return False
+
+
 def update_tournament_tops(now):
     current = fb_get("polla/tournament") or {}
     last = iso_to_dt(current.get("lastFetch"))
-    # no gastar llamadas cada 20 minutos: basta cada 6 horas salvo FORCE_TOPS=1
     if last and not FORCE_TOPS and (now - last) < timedelta(hours=6):
-        print("Top scorers/assists: omitido, última carga hace menos de 6 horas.")
-        return False
-    scorers = []
-    assists = []
-    try:
-        scorers = api_get("/players/topscorers", {"league": LEAGUE, "season": SEASON}).get("response") or []
-    except Exception as e:
-        print(f"WARN endpoint topscorers: {e}")
-    try:
-        assists = api_get("/players/topassists", {"league": LEAGUE, "season": SEASON}).get("response") or []
-    except Exception as e:
-        print(f"WARN endpoint topassists: {e}")
-    fb_put("polla/tournament", {
+        print("Top scorers/assists: omitido, última carga hace menos de 6 horas. Usa FORCE_TOPS=1 para forzar.")
+        return False, len(current.get("topscorers") or []), len(current.get("topassists") or []), []
+
+    diag = []
+    scorers_payload = api_get("/players/topscorers", {"league": LEAGUE, "season": SEASON})
+    assists_payload = api_get("/players/topassists", {"league": LEAGUE, "season": SEASON})
+    scorers = scorers_payload.get("response") or []
+    assists = assists_payload.get("response") or []
+    if scorers_payload.get("errors"):
+        diag.append({"endpoint": "topscorers", "errors": scorers_payload.get("errors")})
+    if assists_payload.get("errors"):
+        diag.append({"endpoint": "topassists", "errors": assists_payload.get("errors")})
+
+    obj = {
         "lastFetch": now.isoformat(),
         "league": LEAGUE,
         "season": SEASON,
         "topscorers": simplify_top_players(scorers, "goals"),
         "topassists": simplify_top_players(assists, "assists"),
-    })
+        "rawCounts": {"topscorers": len(scorers), "topassists": len(assists)},
+        "errors": diag,
+    }
+    fb_put("polla/tournament", obj)
     print(f"Top scorers: {len(scorers)} · Top assists: {len(assists)}")
-    return True
+    return True, len(scorers), len(assists), diag
 
 
-def should_update_details(status, dt, cached, now):
-    if status in LIVE_STATUS:
-        return True
-    if status in PRE_STATUS and dt:
-        # Busca alineaciones el día del partido / pocas horas antes.
-        return timedelta(hours=-2) <= (dt - now) <= timedelta(hours=8)
-    if status in FINAL_STATUS:
-        # Los finales se congelan: una vez con detalle final, no se vuelve a gastar llamadas.
-        if not cached:
-            return True
-        if not cached.get("isFinal"):
-            return True
-        if not cached.get("events") and not cached.get("statistics") and not cached.get("lineups"):
-            return True
-    return False
+def fixture_sample(fixtures, limit=8):
+    out = []
+    for item in fixtures[:limit]:
+        f = item.get("fixture") or {}
+        teams = item.get("teams") or {}
+        out.append({
+            "id": f.get("id"),
+            "date": f.get("date"),
+            "status": (f.get("status") or {}).get("short"),
+            "home": (teams.get("home") or {}).get("name"),
+            "away": (teams.get("away") or {}).get("name"),
+            "venue": ((f.get("venue") or {}).get("name") or ""),
+        })
+    return out
 
 
 def main():
     now = datetime.now(timezone.utc)
-    fixtures = api_get("/fixtures", {"league": LEAGUE, "season": SEASON}).get("response") or []
+    fixtures_payload = api_get("/fixtures", {"league": LEAGUE, "season": SEASON})
+    fixtures = fixtures_payload.get("response") or []
     cached_details = fb_get("polla/details") or {}
     wrote_details = 0
     wrote_meta = 0
     wrote_results = 0
     mapped = 0
     unmatched = []
+    details_candidates = []
 
-    # Orden: vivos primero, luego finales sin cache, luego próximos.
     def priority(row):
         st = (((row.get("fixture") or {}).get("status") or {}).get("short") or "")
         dt = iso_to_dt(((row.get("fixture") or {}).get("date"))) or now + timedelta(days=365)
@@ -303,10 +334,10 @@ def main():
         ch = canon(home.get("name"), home.get("code"))
         ca = canon(away.get("name"), away.get("code"))
         hit = PAIR.get(frozenset((ch, ca))) if (ch and ca) else None
+        st = (((item.get("fixture") or {}).get("status") or {}).get("short") or "")
         if not hit:
-            st = (((item.get("fixture") or {}).get("status") or {}).get("short") or "")
-            if st in FINAL_STATUS or st in LIVE_STATUS:
-                unmatched.append(f"{home.get('name')} vs {away.get('name')} [{st}]")
+            if len(unmatched) < 30:
+                unmatched.append({"home": home.get("name"), "away": away.get("name"), "status": st, "canonHome": ch, "canonAway": ca})
             continue
 
         idx, polla_home, polla_away = hit
@@ -318,11 +349,11 @@ def main():
         venue = venue_obj.get("name") or ""
         city = venue_obj.get("city") or ""
         venue_full = f"{venue}, {city}" if venue and city and city.lower() not in venue.lower() else venue
+
         if dt or venue_full:
             fb_put(f"polla/meta/{idx}", {"date": fixture.get("date"), "venue": venue_full, "source": "api-football"})
             wrote_meta += 1
 
-        # Si API-FOOTBALL ya tiene marcador final, también respalda /polla/results.
         goals = item.get("goals") or {}
         if status in FINAL_STATUS and goals.get("home") is not None and goals.get("away") is not None:
             if ch == polla_home:
@@ -333,9 +364,10 @@ def main():
             wrote_results += 1
 
         cdet = cached_details.get(str(idx)) or cached_details.get(idx) or {}
-        if wrote_details >= MAX_DETAILS_MATCHES:
-            continue
-        if not should_update_details(status, dt, cdet, now):
+        wants = should_update_details(status, dt, cdet, now)
+        if wants and len(details_candidates) < 20:
+            details_candidates.append({"idx": idx, "fixtureId": fixture.get("id"), "home": home.get("name"), "away": away.get("name"), "status": status})
+        if wrote_details >= MAX_DETAILS_MATCHES or not wants:
             continue
 
         fid = fixture.get("id")
@@ -343,9 +375,13 @@ def main():
             continue
         print(f"Detalle idx {idx} fixture {fid} {home.get('name')} vs {away.get('name')} status={status}")
         try:
-            events = api_get("/fixtures/events", {"fixture": fid}).get("response") or []
-            statistics = api_get("/fixtures/statistics", {"fixture": fid}).get("response") or []
-            lineups = api_get("/fixtures/lineups", {"fixture": fid}).get("response") or []
+            events_payload = api_get("/fixtures/events", {"fixture": fid})
+            statistics_payload = api_get("/fixtures/statistics", {"fixture": fid})
+            lineups_payload = api_get("/fixtures/lineups", {"fixture": fid})
+            events = events_payload.get("response") or []
+            statistics = statistics_payload.get("response") or []
+            lineups = lineups_payload.get("response") or []
+            has_any = bool(events or statistics or lineups)
             fb_put(f"polla/details/{idx}", {
                 "fixtureId": fid,
                 "status": status,
@@ -357,29 +393,45 @@ def main():
                 "events": simplify_events(events),
                 "statistics": simplify_statistics(statistics),
                 "lineups": simplify_lineups(lineups),
+                "hasAnyAdvancedData": has_any,
+                "rawCounts": {"events": len(events), "statistics": len(statistics), "lineups": len(lineups)},
+                "errors": [
+                    {"endpoint": "events", "errors": events_payload.get("errors")} if events_payload.get("errors") else None,
+                    {"endpoint": "statistics", "errors": statistics_payload.get("errors")} if statistics_payload.get("errors") else None,
+                    {"endpoint": "lineups", "errors": lineups_payload.get("errors")} if lineups_payload.get("errors") else None,
+                ],
             })
             wrote_details += 1
         except Exception as e:
             print(f"WARN detalle idx {idx}: {e}")
 
-    tops_updated = False
     try:
-        tops_updated = update_tournament_tops(now)
+        tops_updated, scorers_raw, assists_raw, tops_errors = update_tournament_tops(now)
     except Exception as e:
         print(f"WARN top scorers/assists: {e}")
+        tops_updated, scorers_raw, assists_raw, tops_errors = False, 0, 0, [{"exception": str(e)}]
 
     summary = {
         "updatedAt": now.isoformat(),
         "source": "api-football",
         "league": LEAGUE,
         "season": SEASON,
+        "apiCallsUsedInRun": api_calls,
         "fixturesReceived": len(fixtures),
+        "fixtureApiErrors": fixtures_payload.get("errors") or None,
+        "fixtureSample": fixture_sample(fixtures),
         "mappedGroupFixtures": mapped,
         "metaWritten": wrote_meta,
         "resultsWritten": wrote_results,
         "detailsWritten": wrote_details,
+        "detailsCandidates": details_candidates,
         "topTournamentUpdated": tops_updated,
-        "unmatched": unmatched[:20],
+        "topscorersRaw": scorers_raw,
+        "topassistsRaw": assists_raw,
+        "topErrors": tops_errors,
+        "apiErrors": api_errors[:20],
+        "unmatched": unmatched[:30],
+        "note": "Si fixturesReceived es 0 o apiErrors trae mensajes, el problema es API/key/plan/league-season. Si mappedGroupFixtures es 0, el fixture real de API-FOOTBALL no calza con los partidos hardcodeados de la polla o faltan alias de nombres.",
     }
     fb_put("polla/apiFootballLastUpdate", summary)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
