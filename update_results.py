@@ -9,6 +9,7 @@ Variables de entorno (las pone GitHub Actions):
 Config fija abajo: DB_URL (tu base de Firebase).
 """
 import os, json, re, unicodedata, urllib.request
+from datetime import datetime, timezone
 
 # === TU BASE DE FIREBASE (cambiala si alguna vez cambia el proyecto) ===
 DB_URL = "https://polla-gol-jateam-default-rtdb.firebaseio.com"
@@ -160,17 +161,21 @@ def fetch():
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.loads(r.read().decode())
 
-def put(idx,l,v):
-    data=json.dumps({"l":l,"v":v}).encode()
-    req=urllib.request.Request(f"{DB_URL}/polla/results/{idx}.json", data=data, method="PUT",
+def fb_put(path, obj):
+    """Escribe un objeto JSON en Firebase y devuelve el status HTTP."""
+    data=json.dumps(obj, ensure_ascii=False).encode()
+    req=urllib.request.Request(f"{DB_URL}/{path}.json", data=data, method="PUT",
         headers={"Content-Type":"application/json"})
     with urllib.request.urlopen(req, timeout=30) as r:
         return r.status
 
+def put(idx,l,v):
+    return fb_put(f"polla/results/{idx}", {"l":l,"v":v})
+
 def main():
     out=fetch(); ms=out.get("matches",[])
     print(f"Partidos en la API: {len(ms)}")
-    wrote=0; meta=0; unmatched=[]
+    wrote=0; meta=0; meta_venue=0; meta_no_venue=0; unmatched=[]
     for m in ms:
         st=(m.get("stage") or "").upper()
         if st and "GROUP" not in st: continue
@@ -183,10 +188,11 @@ def main():
             continue
         idx,fh,fa=hit
         # meta (fecha + estadio) siempre, aunque no se haya jugado
-        mdata=json.dumps({"date":m.get("utcDate"),"venue":m.get("venue")}, ensure_ascii=False).encode()
-        req=urllib.request.Request(f"{DB_URL}/polla/meta/{idx}.json", data=mdata, method="PUT",
-            headers={"Content-Type":"application/json"})
-        urllib.request.urlopen(req, timeout=30); meta+=1
+        venue=m.get("venue")
+        fb_put(f"polla/meta/{idx}", {"date":m.get("utcDate"),"venue":venue})
+        meta+=1
+        if venue: meta_venue+=1
+        else: meta_no_venue+=1
         # resultado si esta finalizado
         if m.get("status")!="FINISHED": continue
         ft=(m.get("score") or {}).get("fullTime") or {}
@@ -210,13 +216,21 @@ def main():
           "hg":ft.get("home"),"ag":ft.get("away"),
           "ph":pen.get("home"),"pa":pen.get("away"),"winner":sc.get("winner"),
         }
-        data=json.dumps(rec, ensure_ascii=False).encode()
-        req=urllib.request.Request(f"{DB_URL}/polla/ko/{m.get('id')}.json", data=data, method="PUT",
-            headers={"Content-Type":"application/json"})
-        urllib.request.urlopen(req, timeout=30)
+        fb_put(f"polla/ko/{m.get('id')}", rec)
         ko+=1
+    fb_put("polla/lastUpdate", {
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "apiMatches": len(ms),
+        "groupMetaWritten": meta,
+        "groupMetaWithVenue": meta_venue,
+        "groupMetaWithoutVenue": meta_no_venue,
+        "finishedResultsWritten": wrote,
+        "knockoutWritten": ko,
+        "unmatchedFinished": unmatched,
+    })
     print(f"Eliminatorias escritas: {ko}")
     print(f"Escritos: {wrote}")
+    print(f"Meta con estadio: {meta_venue} / {meta} (sin estadio: {meta_no_venue})")
     if unmatched:
         print("SIN MAPEAR (avisar para agregar alias):")
         for u in unmatched: print("  -",u)
