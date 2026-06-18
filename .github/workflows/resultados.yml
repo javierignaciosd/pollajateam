@@ -3,7 +3,6 @@ name: Actualizar resultados Mundial
 on:
   workflow_dispatch:
   schedule:
-    # Cada 20 minutos, evitando el minuto 00 para reducir retrasos por alta carga
     - cron: "7,27,47 * * * *"
 
 jobs:
@@ -13,6 +12,14 @@ jobs:
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
+
+      - name: Diagnóstico del disparador
+        run: |
+          echo "Evento: ${{ github.event_name }}"
+          echo "Schedule: ${{ github.event.schedule }}"
+          echo "Branch ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
+          date -u
 
       - name: Configurar Python
         uses: actions/setup-python@v5
