@@ -1,0 +1,40 @@
+name: Actualizar cuotas Odds Mundial
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-odds:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Ejecutar actualización de cuotas Odds-API.io
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          ODDS_BOOKMAKERS: ${{ vars.ODDS_BOOKMAKERS }}
+          ODDS_MAX_EVENTS: ${{ vars.ODDS_MAX_EVENTS }}
+        run: |
+          if [ -z "$ODDS_API_KEY" ]; then
+            echo "ODDS_API_KEY no configurado. Se omite actualización de cuotas."
+            exit 0
+          fi
+
+          # Si no existe variable ODDS_BOOKMAKERS, usar solo 2 bookmakers para cuidar el plan gratis.
+          if [ -z "$ODDS_BOOKMAKERS" ]; then
+            export ODDS_BOOKMAKERS="Bet365,Unibet"
+          fi
+
+          # Si no existe variable ODDS_MAX_EVENTS, pedir cuotas solo para 10 partidos por ejecución.
+          if [ -z "$ODDS_MAX_EVENTS" ]; then
+            export ODDS_MAX_EVENTS="10"
+          fi
+
+          python update_odds.py
