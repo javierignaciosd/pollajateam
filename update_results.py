@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""
+Actualiza los resultados reales del Mundial 2026 en tu Firebase Realtime Database.
+Consulta football-data.org (tier gratis, competencia WC) y escribe los partidos
+FINALIZADOS en /polla/results/<idx>.json — tu HTML los muestra en vivo.
+
+Variables de entorno (las pone GitHub Actions):
+  FD_TOKEN  -> tu token gratis de football-data.org   (OBLIGATORIO)
+Config fija abajo: DB_URL (tu base de Firebase).
+"""
+import os, json, re, unicodedata, urllib.request
+
+# === TU BASE DE FIREBASE (cambiala si alguna vez cambia el proyecto) ===
+DB_URL = "https://polla-gol-jateam-default-rtdb.firebaseio.com"
+# =======================================================================
+
+FD_TOKEN = os.environ.get("FD_TOKEN", "").strip()
+if not FD_TOKEN:
+    raise SystemExit("Falta FD_TOKEN (token de football-data.org).")
+
+# Mapeo idx -> (equipo local, equipo visita) en nombres normalizados
+FIX = [
+    [0, "republica checa", "sudafrica"],
+    [1, "suiza", "bosnia y herzegovina"],
+    [2, "canada", "qatar"],
+    [3, "mexico", "corea del sur"],
+    [4, "estados unidos", "australia"],
+    [5, "escocia", "marruecos"],
+    [6, "brasil", "haiti"],
+    [7, "turquia", "paraguay"],
+    [8, "paises bajos", "suecia"],
+    [9, "alemania", "costa de marfil"],
+    [10, "ecuador", "curazao"],
+    [11, "tunez", "japon"],
+    [12, "espana", "arabia saudita"],
+    [13, "belgica", "iran"],
+    [14, "uruguay", "cabo verde"],
+    [15, "nueva zelanda", "egipto"],
+    [16, "argentina", "austria"],
+    [17, "francia", "irak"],
+    [18, "noruega", "senegal"],
+    [19, "jordania", "argelia"],
+    [20, "portugal", "uzbekistan"],
+    [21, "inglaterra", "ghana"],
+    [22, "panama", "croacia"],
+    [23, "colombia", "rd del congo"],
+    [24, "suiza", "canada"],
+    [25, "bosnia y herzegovina", "qatar"],
+    [26, "escocia", "brasil"],
+    [27, "marruecos", "haiti"],
+    [28, "republica checa", "mexico"],
+    [29, "sudafrica", "corea del sur"],
+    [30, "ecuador", "alemania"],
+    [31, "curazao", "costa de marfil"],
+    [32, "tunez", "paises bajos"],
+    [33, "japon", "suecia"],
+    [34, "turquia", "estados unidos"],
+    [35, "paraguay", "australia"],
+    [36, "noruega", "francia"],
+    [37, "senegal", "irak"],
+    [38, "uruguay", "espana"],
+    [39, "cabo verde", "arabia saudita"],
+    [40, "nueva zelanda", "belgica"],
+    [41, "egipto", "iran"],
+    [42, "panama", "inglaterra"],
+    [43, "croacia", "ghana"],
+    [44, "colombia", "portugal"],
+    [45, "rd del congo", "uzbekistan"],
+    [46, "jordania", "argentina"],
+    [47, "argelia", "austria"],
+    [48, "corea del sur", "republica checa"],
+    [49, "mexico", "sudafrica"],
+    [50, "bosnia y herzegovina", "canada"],
+    [51, "qatar", "suiza"],
+    [52, "australia", "turquia"],
+    [53, "estados unidos", "paraguay"],
+    [54, "brasil", "marruecos"],
+    [55, "escocia", "haiti"],
+    [56, "japon", "paises bajos"],
+    [57, "suecia", "tunez"],
+    [58, "alemania", "curazao"],
+    [59, "costa de marfil", "ecuador"],
+    [60, "arabia saudita", "uruguay"],
+    [61, "cabo verde", "espana"],
+    [62, "belgica", "egipto"],
+    [63, "iran", "nueva zelanda"],
+    [64, "argelia", "argentina"],
+    [65, "austria", "jordania"],
+    [66, "francia", "senegal"],
+    [67, "irak", "noruega"],
+    [68, "colombia", "uzbekistan"],
+    [69, "portugal", "rd del congo"],
+    [70, "croacia", "inglaterra"],
+    [71, "ghana", "panama"]
+]
+
+# Alias: nombre de la API (en ingles, normalizado) -> nombre canonico (el de FIX)
+ALIAS = {
+ "mexico":"mexico","south africa":"sudafrica","korea republic":"corea del sur",
+ "south korea":"corea del sur","republic of korea":"corea del sur","korea, republic of":"corea del sur",
+ "czechia":"republica checa","czech republic":"republica checa","switzerland":"suiza",
+ "bosnia and herzegovina":"bosnia y herzegovina","bosniaherzegovina":"bosnia y herzegovina",
+ "canada":"canada","qatar":"qatar","united states":"estados unidos","usa":"estados unidos",
+ "united states of america":"estados unidos","australia":"australia","turkey":"turquia",
+ "turkiye":"turquia","trkiye":"turquia","paraguay":"paraguay","scotland":"escocia",
+ "morocco":"marruecos","brazil":"brasil","haiti":"haiti","netherlands":"paises bajos",
+ "holland":"paises bajos","sweden":"suecia","germany":"alemania","ivory coast":"costa de marfil",
+ "cote divoire":"costa de marfil","cote d ivoire":"costa de marfil","ecuador":"ecuador",
+ "curacao":"curazao","tunisia":"tunez","japan":"japon","spain":"espana","saudi arabia":"arabia saudita",
+ "belgium":"belgica","iran":"iran","ir iran":"iran","uruguay":"uruguay","cape verde":"cabo verde",
+ "cabo verde":"cabo verde","new zealand":"nueva zelanda","egypt":"egipto","argentina":"argentina",
+ "austria":"austria","france":"francia","iraq":"irak","norway":"noruega","senegal":"senegal",
+ "jordan":"jordania","algeria":"argelia","portugal":"portugal","uzbekistan":"uzbekistan",
+ "england":"inglaterra","ghana":"ghana","panama":"panama","croatia":"croacia","colombia":"colombia",
+ "dr congo":"rd del congo","congo dr":"rd del congo","democratic republic of congo":"rd del congo",
+ "congo democratic republic":"rd del congo","dr congo (kinshasa)":"rd del congo",
+}
+
+def norm(s):
+    s=''.join(c for c in unicodedata.normalize('NFD',str(s or '')) if unicodedata.category(c)!='Mn').lower()
+    s=re.sub(r'[^a-z ]','',s); return re.sub(r'\s+',' ',s).strip()
+
+def canon(*names):
+    for n in names:
+        k=norm(n)
+        if not k: continue
+        if k in ALIAS: return ALIAS[k]
+        # tal cual (cubre nombres ya iguales)
+        for _,h,a in FIX:
+            if k==h or k==a: return k
+    return None
+
+# indice por par {local,visita}
+PAIR={}
+for idx,h,a in FIX:
+    PAIR[frozenset((h,a))]=(idx,h,a)
+
+def fetch():
+    req=urllib.request.Request("https://api.football-data.org/v4/competitions/WC/matches",
+        headers={"X-Auth-Token":FD_TOKEN})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read().decode())
+
+def put(idx,l,v):
+    data=json.dumps({"l":l,"v":v}).encode()
+    req=urllib.request.Request(f"{DB_URL}/polla/results/{idx}.json", data=data, method="PUT",
+        headers={"Content-Type":"application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return r.status
+
+def main():
+    out=fetch(); ms=out.get("matches",[])
+    print(f"Partidos en la API: {len(ms)}")
+    wrote=0; unmatched=[]
+    for m in ms:
+        if m.get("status")!="FINISHED": continue
+        st=(m.get("stage") or "").upper()
+        if st and "GROUP" not in st: continue
+        ft=(m.get("score") or {}).get("fullTime") or {}
+        if ft.get("home") is None or ft.get("away") is None: continue
+        ht=m.get("homeTeam",{}); at=m.get("awayTeam",{})
+        ch=canon(ht.get("name"),ht.get("shortName"),ht.get("tla"))
+        ca=canon(at.get("name"),at.get("shortName"),at.get("tla"))
+        if not ch or not ca:
+            unmatched.append(f"{ht.get('name')} vs {at.get('name')}"); continue
+        hit=PAIR.get(frozenset((ch,ca)))
+        if not hit:
+            unmatched.append(f"{ht.get('name')} vs {at.get('name')} (par no esta en grupos)"); continue
+        idx,fh,fa=hit
+        # orientar al orden de FIX
+        if ch==fh: l,v=ft["home"],ft["away"]
+        else:      l,v=ft["away"],ft["home"]
+        put(idx,int(l),int(v)); wrote+=1
+        print(f"  idx {idx}: {ch} {l}-{v} {ca}")
+    print(f"Escritos: {wrote}")
+    if unmatched:
+        print("SIN MAPEAR (avisar para agregar alias):")
+        for u in unmatched: print("  -",u)
+
+if __name__=="__main__":
+    main()
