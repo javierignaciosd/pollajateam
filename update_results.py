@@ -170,27 +170,32 @@ def put(idx,l,v):
 def main():
     out=fetch(); ms=out.get("matches",[])
     print(f"Partidos en la API: {len(ms)}")
-    wrote=0; unmatched=[]
+    wrote=0; meta=0; unmatched=[]
     for m in ms:
-        if m.get("status")!="FINISHED": continue
         st=(m.get("stage") or "").upper()
         if st and "GROUP" not in st: continue
-        ft=(m.get("score") or {}).get("fullTime") or {}
-        if ft.get("home") is None or ft.get("away") is None: continue
-        ht=m.get("homeTeam",{}); at=m.get("awayTeam",{})
+        ht=m.get("homeTeam",{}) or {}; at=m.get("awayTeam",{}) or {}
         ch=canon(ht.get("name"),ht.get("shortName"),ht.get("tla"))
         ca=canon(at.get("name"),at.get("shortName"),at.get("tla"))
-        if not ch or not ca:
-            unmatched.append(f"{ht.get('name')} vs {at.get('name')}"); continue
-        hit=PAIR.get(frozenset((ch,ca)))
+        hit=PAIR.get(frozenset((ch,ca))) if (ch and ca) else None
         if not hit:
-            unmatched.append(f"{ht.get('name')} vs {at.get('name')} (par no esta en grupos)"); continue
+            if m.get("status")=="FINISHED": unmatched.append(f"{ht.get('name')} vs {at.get('name')}")
+            continue
         idx,fh,fa=hit
-        # orientar al orden de FIX
+        # meta (fecha + estadio) siempre, aunque no se haya jugado
+        mdata=json.dumps({"date":m.get("utcDate"),"venue":m.get("venue")}, ensure_ascii=False).encode()
+        req=urllib.request.Request(f"{DB_URL}/polla/meta/{idx}.json", data=mdata, method="PUT",
+            headers={"Content-Type":"application/json"})
+        urllib.request.urlopen(req, timeout=30); meta+=1
+        # resultado si esta finalizado
+        if m.get("status")!="FINISHED": continue
+        ft=(m.get("score") or {}).get("fullTime") or {}
+        if ft.get("home") is None or ft.get("away") is None: continue
         if ch==fh: l,v=ft["home"],ft["away"]
         else:      l,v=ft["away"],ft["home"]
         put(idx,int(l),int(v)); wrote+=1
         print(f"  idx {idx}: {ch} {l}-{v} {ca}")
+    print(f"Meta (fecha/estadio) escritas: {meta}")
     # --- ELIMINATORIAS -> polla/ko ---
     ko=0
     for m in ms:
@@ -200,6 +205,7 @@ def main():
         sc=(m.get("score") or {}); ft=sc.get("fullTime") or {}; pen=sc.get("penalties") or {}
         rec={
           "stage":lab,"order":order,"date":m.get("utcDate"),"status":m.get("status"),
+          "venue":m.get("venue"),
           "home":team_obj(m.get("homeTeam")),"away":team_obj(m.get("awayTeam")),
           "hg":ft.get("home"),"ag":ft.get("away"),
           "ph":pen.get("home"),"pa":pen.get("away"),"winner":sc.get("winner"),
