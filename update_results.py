@@ -172,10 +172,45 @@ def fb_put(path, obj):
 def put(idx,l,v):
     return fb_put(f"polla/results/{idx}", {"l":l,"v":v})
 
+def score_goals(m):
+    """Devuelve el mejor marcador disponible de football-data.org para vivo/final."""
+    sc=(m.get("score") or {})
+    ft=sc.get("fullTime") or {}
+    ht=sc.get("halfTime") or {}
+    # Para partidos en juego, football-data suele ir llenando score.fullTime como marcador actual.
+    # Si no viene, dejamos respaldo con halfTime.
+    h=ft.get("home")
+    a=ft.get("away")
+    if h is None or a is None:
+        h=ht.get("home")
+        a=ht.get("away")
+    if h is None or a is None:
+        return None, None
+    return int(h), int(a)
+
+def live_rec(m, idx, ch, ca, fh, fa):
+    """Registro liviano para /polla/live/<idx>: status + marcador actual/final si existe."""
+    gh,ga=score_goals(m)
+    l=v=None
+    if gh is not None and ga is not None:
+        # Ajustar marcador al orden local/visita del HTML si la API trae el partido al revés.
+        if ch==fh:
+            l,v=gh,ga
+        else:
+            l,v=ga,gh
+    return {
+        "status": m.get("status"),
+        "l": l,
+        "v": v,
+        "date": m.get("utcDate"),
+        "venue": m.get("venue"),
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+    }
+
 def main():
     out=fetch(); ms=out.get("matches",[])
     print(f"Partidos en la API: {len(ms)}")
-    wrote=0; meta=0; meta_venue=0; meta_no_venue=0; unmatched=[]
+    wrote=0; meta=0; meta_venue=0; meta_no_venue=0; live_written=0; live_active=0; unmatched=[]
     for m in ms:
         st=(m.get("stage") or "").upper()
         if st and "GROUP" not in st: continue
@@ -193,12 +228,18 @@ def main():
         meta+=1
         if venue: meta_venue+=1
         else: meta_no_venue+=1
-        # resultado si esta finalizado
+
+        # estado + marcador vivo/provisional/final para el HTML
+        rec_live=live_rec(m, idx, ch, ca, fh, fa)
+        fb_put(f"polla/live/{idx}", rec_live)
+        live_written+=1
+        if str(m.get("status") or "").upper() in ("IN_PLAY","PAUSED","LIVE","EXTRA_TIME","PENALTY_SHOOTOUT"):
+            live_active+=1
+
+        # resultado final: solo se escribe en /polla/results cuando football-data marca FINISHED
         if m.get("status")!="FINISHED": continue
-        ft=(m.get("score") or {}).get("fullTime") or {}
-        if ft.get("home") is None or ft.get("away") is None: continue
-        if ch==fh: l,v=ft["home"],ft["away"]
-        else:      l,v=ft["away"],ft["home"]
+        l,v=rec_live.get("l"),rec_live.get("v")
+        if l is None or v is None: continue
         put(idx,int(l),int(v)); wrote+=1
         print(f"  idx {idx}: {ch} {l}-{v} {ca}")
     print(f"Meta (fecha/estadio) escritas: {meta}")
@@ -225,12 +266,15 @@ def main():
         "groupMetaWithVenue": meta_venue,
         "groupMetaWithoutVenue": meta_no_venue,
         "finishedResultsWritten": wrote,
+        "liveRowsWritten": live_written,
+        "liveMatchesActive": live_active,
         "knockoutWritten": ko,
         "unmatchedFinished": unmatched,
     })
     print(f"Eliminatorias escritas: {ko}")
     print(f"Escritos: {wrote}")
     print(f"Meta con estadio: {meta_venue} / {meta} (sin estadio: {meta_no_venue})")
+    print(f"Live escritos: {live_written} (en juego: {live_active})")
     if unmatched:
         print("SIN MAPEAR (avisar para agregar alias):")
         for u in unmatched: print("  -",u)
