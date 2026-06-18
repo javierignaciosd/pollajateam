@@ -1,17 +1,15 @@
 name: Actualizar resultados Mundial
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: "*/20 * * * *"   # cada 20 minutos (UTC)
-  workflow_dispatch:          # botón para correrlo a mano
-
-concurrency:
-  group: actualizar-resultados-mundial
-  cancel-in-progress: true
+    # Cada 20 minutos, evitando el minuto 00 para reducir retrasos por alta carga
+    - cron: "7,27,47 * * * *"
 
 jobs:
-  update:
+  update-results:
     runs-on: ubuntu-latest
+
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -21,7 +19,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Actualizar resultados en Firebase
+      - name: Ejecutar actualización
         env:
           FD_TOKEN: ${{ secrets.FD_TOKEN }}
         run: python update_results.py
