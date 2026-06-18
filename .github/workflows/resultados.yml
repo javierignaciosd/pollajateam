@@ -2,8 +2,6 @@ name: Actualizar resultados Mundial
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
 
 jobs:
   update-results:
@@ -12,14 +10,6 @@ jobs:
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
-
-      - name: Diagnóstico del disparador
-        run: |
-          echo "Evento: ${{ github.event_name }}"
-          echo "Schedule: ${{ github.event.schedule }}"
-          echo "Branch ref: ${{ github.ref }}"
-          echo "SHA: ${{ github.sha }}"
-          date -u
 
       - name: Configurar Python
         uses: actions/setup-python@v5
