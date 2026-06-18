@@ -1185,6 +1185,130 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
   }
 }
 
+
+
+/* ===== v7.16 navegación limpia: menú desplegable de secciones ===== */
+.navwrap{
+  position:relative;
+  display:inline-block;
+  margin-top:18px;
+  z-index:60;
+}
+.nav-trigger{
+  border:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(21,34,90,.95),rgba(13,25,68,.98));
+  color:var(--txt);
+  border-radius:18px;
+  padding:10px 13px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:210px;
+  box-shadow:0 10px 28px rgba(0,0,0,.18);
+  cursor:pointer;
+}
+.nav-trigger:hover{
+  border-color:rgba(25,198,255,.42);
+}
+.nav-trigger .hamb{
+  width:36px;
+  height:36px;
+  border-radius:13px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(25,198,255,.10);
+  color:var(--cyan);
+  font-size:20px;
+  font-weight:900;
+}
+.nav-trigger .nav-text{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  min-width:0;
+  line-height:1.05;
+  flex:1;
+}
+.nav-trigger .nav-text small{
+  color:var(--mut2);
+  font-size:10px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.55px;
+}
+.nav-trigger .nav-text b{
+  color:#fff;
+  font-size:15px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.nav-trigger .chev{
+  color:var(--mut);
+  font-size:18px;
+  transform:translateY(-1px);
+  transition:.15s;
+}
+.navwrap.open .chev{
+  transform:rotate(180deg);
+}
+.navwrap .tabs.nav-menu{
+  position:absolute;
+  top:calc(100% + 8px);
+  left:0;
+  width:min(330px,calc(100vw - 40px));
+  display:none!important;
+  flex-direction:column;
+  gap:7px;
+  margin-top:0;
+  background:linear-gradient(180deg,rgba(17,31,82,.98),rgba(9,18,50,.98));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;
+  padding:9px;
+  box-shadow:0 22px 50px rgba(0,0,0,.35);
+  backdrop-filter:blur(12px);
+}
+.navwrap.open .tabs.nav-menu{
+  display:flex!important;
+  animation:fadeUp .16s ease both;
+}
+.navwrap .tabs.nav-menu .tab{
+  width:100%;
+  text-align:left;
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  padding:12px 13px;
+  border-radius:13px;
+  font-size:14px;
+}
+.navwrap .tabs.nav-menu .tab.on{
+  background:linear-gradient(92deg,var(--mag),#c81e63);
+  color:#fff;
+  box-shadow:0 8px 20px rgba(232,39,124,.18);
+}
+
+@media (max-width:760px){
+  .navwrap{
+    display:block;
+    width:100%;
+    margin:14px 0 14px;
+  }
+  .nav-trigger{
+    width:100%;
+    min-width:0;
+    border-radius:18px;
+    padding:9px 11px;
+  }
+  .navwrap .tabs.nav-menu{
+    position:absolute;
+    left:0;
+    right:0;
+    width:100%;
+    max-width:none;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1198,10 +1322,17 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
 </div></div>
 
 <div class="wrap">
-  <div class="tabs">
-    <button class="tab on" data-v="polla">⚽ Polla</button>
-    <button class="tab" data-v="real">📊 Fase de Grupos</button>
-    <button class="tab" data-v="ko">🏆 Eliminatorias</button>
+  <div class="navwrap" id="navWrap">
+    <button class="nav-trigger" id="navTrigger" type="button" aria-expanded="false" aria-controls="navMenu">
+      <span class="hamb">☰</span>
+      <span class="nav-text"><small>Navegar</small><b id="navCurrent">Polla</b></span>
+      <span class="chev">▾</span>
+    </button>
+    <div class="tabs nav-menu" id="navMenu">
+      <button class="tab on" data-v="polla">⚽ Polla</button>
+      <button class="tab" data-v="real">📊 Fase de Grupos</button>
+      <button class="tab" data-v="ko">🏆 Eliminatorias</button>
+    </div>
   </div>
   <div id="viewPolla">
   <section class="live-now hide" id="liveNowSection">
@@ -2231,12 +2362,37 @@ function initData(){
 document.getElementById('ranks').addEventListener('click',e=>{const b=e.target.closest('[data-player]');if(b)openPlayer(+b.dataset.player);});
 document.getElementById('ranks').addEventListener('keydown',e=>{const b=e.target.closest('[data-player]');if(b&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openPlayer(+b.dataset.player);}});
 document.getElementById('mbody').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(b)openMatch(+b.dataset.open);});
+const navWrap=document.getElementById('navWrap');
+const navTrigger=document.getElementById('navTrigger');
+const navCurrent=document.getElementById('navCurrent');
+function closeNavMenu(){
+  if(!navWrap||!navTrigger)return;
+  navWrap.classList.remove('open');
+  navTrigger.setAttribute('aria-expanded','false');
+}
+function openNavMenu(){
+  if(!navWrap||!navTrigger)return;
+  navWrap.classList.add('open');
+  navTrigger.setAttribute('aria-expanded','true');
+}
+navTrigger.addEventListener('click',e=>{
+  e.stopPropagation();
+  navWrap.classList.contains('open') ? closeNavMenu() : openNavMenu();
+});
+document.addEventListener('click',e=>{
+  if(navWrap && !navWrap.contains(e.target)) closeNavMenu();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeNavMenu();
+});
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));
   const v=b.dataset.v;
   document.getElementById('viewPolla').style.display=v==='polla'?'':'none';
   document.getElementById('viewReal').style.display=v==='real'?'':'none';
   document.getElementById('viewKO').style.display=v==='ko'?'':'none';
+  if(navCurrent) navCurrent.textContent=b.textContent.replace(/^\s*[⚽📊🏆]\s*/,'').trim();
+  closeNavMenu();
 });
 document.getElementById('konav').addEventListener('click',e=>{const b=e.target.closest('[data-r]');if(b){selKO=b.dataset.r;renderKO();}});
 document.querySelector('.modetoggle').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(!b)return;
