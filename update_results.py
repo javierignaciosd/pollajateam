@@ -135,6 +135,25 @@ PAIR={}
 for idx,h,a in FIX:
     PAIR[frozenset((h,a))]=(idx,h,a)
 
+# equipo canonico -> [nombre_es, iso, emoji]
+TEAMS = {"republica checa": ["República Checa","cz","🇨🇿"],"sudafrica": ["Sudáfrica","za","🇿🇦"],"mexico": ["México","mx","🇲🇽"],"corea del sur": ["Corea del Sur","kr","🇰🇷"],"suiza": ["Suiza","ch","🇨🇭"],"bosnia y herzegovina": ["Bosnia y Herzegovina","ba","🇧🇦"],"canada": ["Canadá","ca","🇨🇦"],"qatar": ["Qatar","qa","🇶🇦"],"estados unidos": ["Estados Unidos","us","🇺🇸"],"australia": ["Australia","au","🇦🇺"],"turquia": ["Turquía","tr","🇹🇷"],"paraguay": ["Paraguay","py","🇵🇾"],"escocia": ["Escocia","gb-sct","🏴󠁧󠁢󠁳󠁣󠁴󠁿"],"marruecos": ["Marruecos","ma","🇲🇦"],"brasil": ["Brasil","br","🇧🇷"],"haiti": ["Haití","ht","🇭🇹"],"paises bajos": ["Países Bajos","nl","🇳🇱"],"suecia": ["Suecia","se","🇸🇪"],"tunez": ["Túnez","tn","🇹🇳"],"japon": ["Japón","jp","🇯🇵"],"alemania": ["Alemania","de","🇩🇪"],"costa de marfil": ["Costa de Marfil","ci","🇨🇮"],"ecuador": ["Ecuador","ec","🇪🇨"],"curazao": ["Curazao","cw","🇨🇼"],"espana": ["España","es","🇪🇸"],"arabia saudita": ["Arabia Saudita","sa","🇸🇦"],"uruguay": ["Uruguay","uy","🇺🇾"],"cabo verde": ["Cabo Verde","cv","🇨🇻"],"belgica": ["Bélgica","be","🇧🇪"],"iran": ["Irán","ir","🇮🇷"],"nueva zelanda": ["Nueva Zelanda","nz","🇳🇿"],"egipto": ["Egipto","eg","🇪🇬"],"argentina": ["Argentina","ar","🇦🇷"],"austria": ["Austria","at","🇦🇹"],"jordania": ["Jordania","jo","🇯🇴"],"argelia": ["Argelia","dz","🇩🇿"],"francia": ["Francia","fr","🇫🇷"],"irak": ["Irak","iq","🇮🇶"],"noruega": ["Noruega","no","🇳🇴"],"senegal": ["Senegal","sn","🇸🇳"],"portugal": ["Portugal","pt","🇵🇹"],"uzbekistan": ["Uzbekistán","uz","🇺🇿"],"colombia": ["Colombia","co","🇨🇴"],"rd del congo": ["RD del Congo","cd","🇨🇩"],"inglaterra": ["Inglaterra","gb-eng","🏴󠁧󠁢󠁥󠁮󠁧󠁿"],"ghana": ["Ghana","gh","🇬🇭"],"panama": ["Panamá","pa","🇵🇦"],"croacia": ["Croacia","hr","🇭🇷"]}
+
+STAGE = {  # stage de la API -> (etiqueta, orden)
+ "LAST_32":("16vos de final",1),"ROUND_OF_32":("16vos de final",1),
+ "LAST_16":("8vos de final",2),"ROUND_OF_16":("8vos de final",2),
+ "QUARTER_FINALS":("4tos de final",3),"QUARTER_FINAL":("4tos de final",3),
+ "SEMI_FINALS":("Semifinal",4),"SEMI_FINAL":("Semifinal",4),
+ "THIRD_PLACE":("3er puesto",5),"3RD_PLACE":("3er puesto",5),
+ "FINAL":("Final",6),
+}
+def team_obj(tm):
+    """{name,iso,flag} a partir de un equipo de la API (o placeholder)."""
+    if not tm: return {"name":"Por definir","iso":"","flag":""}
+    c=canon(tm.get("name"),tm.get("shortName"),tm.get("tla"))
+    if c and c in TEAMS:
+        es,iso,fl=TEAMS[c]; return {"name":es,"iso":iso,"flag":fl}
+    return {"name":tm.get("name") or "Por definir","iso":"","flag":""}
+
 def fetch():
     req=urllib.request.Request("https://api.football-data.org/v4/competitions/WC/matches",
         headers={"X-Auth-Token":FD_TOKEN})
@@ -172,6 +191,25 @@ def main():
         else:      l,v=ft["away"],ft["home"]
         put(idx,int(l),int(v)); wrote+=1
         print(f"  idx {idx}: {ch} {l}-{v} {ca}")
+    # --- ELIMINATORIAS -> polla/ko ---
+    ko=0
+    for m in ms:
+        st=(m.get("stage") or "").upper()
+        if not st or "GROUP" in st: continue
+        lab,order=STAGE.get(st,(st.replace("_"," ").title(),9))
+        sc=(m.get("score") or {}); ft=sc.get("fullTime") or {}; pen=sc.get("penalties") or {}
+        rec={
+          "stage":lab,"order":order,"date":m.get("utcDate"),"status":m.get("status"),
+          "home":team_obj(m.get("homeTeam")),"away":team_obj(m.get("awayTeam")),
+          "hg":ft.get("home"),"ag":ft.get("away"),
+          "ph":pen.get("home"),"pa":pen.get("away"),"winner":sc.get("winner"),
+        }
+        data=json.dumps(rec, ensure_ascii=False).encode()
+        req=urllib.request.Request(f"{DB_URL}/polla/ko/{m.get('id')}.json", data=data, method="PUT",
+            headers={"Content-Type":"application/json"})
+        urllib.request.urlopen(req, timeout=30)
+        ko+=1
+    print(f"Eliminatorias escritas: {ko}")
     print(f"Escritos: {wrote}")
     if unmatched:
         print("SIN MAPEAR (avisar para agregar alias):")
