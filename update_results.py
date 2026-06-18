@@ -9,7 +9,7 @@ Variables de entorno (las pone GitHub Actions):
 Config fija abajo: DB_URL (tu base de Firebase).
 """
 import os, json, re, unicodedata, urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # === TU BASE DE FIREBASE (cambiala si alguna vez cambia el proyecto) ===
 DB_URL = "https://polla-gol-jateam-default-rtdb.firebaseio.com"
@@ -188,6 +188,31 @@ def score_goals(m):
         return None, None
     return int(h), int(a)
 
+def parse_utc(dt):
+    if not dt:
+        return None
+    try:
+        return datetime.fromisoformat(str(dt).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+def effective_status(m):
+    """
+    football-data.org a veces mantiene partidos como TIMED/SCHEDULED aunque ya empezó.
+    Para que el HTML muestre el partido en vivo, forzamos estado IN_PLAY por horario
+    si el partido está entre su hora de inicio y una ventana razonable de duración.
+    """
+    raw = str(m.get("status") or "").upper()
+    if raw in ("IN_PLAY", "PAUSED", "LIVE", "EXTRA_TIME", "PENALTY_SHOOTOUT", "FINISHED"):
+        return raw, False
+
+    kick = parse_utc(m.get("utcDate"))
+    now = datetime.now(timezone.utc)
+    if kick and kick <= now <= (kick + timedelta(hours=2, minutes=45)):
+        return "IN_PLAY", True
+
+    return raw, False
+
 def live_rec(m, idx, ch, ca, fh, fa):
     """Registro liviano para /polla/live/<idx>: status + marcador actual/final si existe."""
     gh,ga=score_goals(m)
@@ -198,8 +223,11 @@ def live_rec(m, idx, ch, ca, fh, fa):
             l,v=gh,ga
         else:
             l,v=ga,gh
+    st_eff, forced = effective_status(m)
     return {
-        "status": m.get("status"),
+        "status": st_eff,
+        "rawStatus": m.get("status"),
+        "forcedLiveByTime": forced,
         "l": l,
         "v": v,
         "date": m.get("utcDate"),
@@ -210,7 +238,7 @@ def live_rec(m, idx, ch, ca, fh, fa):
 def main():
     out=fetch(); ms=out.get("matches",[])
     print(f"Partidos en la API: {len(ms)}")
-    wrote=0; meta=0; meta_venue=0; meta_no_venue=0; live_written=0; live_active=0; unmatched=[]
+    wrote=0; meta=0; meta_venue=0; meta_no_venue=0; live_written=0; live_active=0; forced_live_by_time=0; unmatched=[]
     for m in ms:
         st=(m.get("stage") or "").upper()
         if st and "GROUP" not in st: continue
@@ -233,8 +261,10 @@ def main():
         rec_live=live_rec(m, idx, ch, ca, fh, fa)
         fb_put(f"polla/live/{idx}", rec_live)
         live_written+=1
-        if str(m.get("status") or "").upper() in ("IN_PLAY","PAUSED","LIVE","EXTRA_TIME","PENALTY_SHOOTOUT"):
+        if str(rec_live.get("status") or "").upper() in ("IN_PLAY","PAUSED","LIVE","EXTRA_TIME","PENALTY_SHOOTOUT"):
             live_active+=1
+        if rec_live.get("forcedLiveByTime"):
+            forced_live_by_time+=1
 
         # resultado final: solo se escribe en /polla/results cuando football-data marca FINISHED
         if m.get("status")!="FINISHED": continue
@@ -268,13 +298,14 @@ def main():
         "finishedResultsWritten": wrote,
         "liveRowsWritten": live_written,
         "liveMatchesActive": live_active,
+        "forcedLiveByTime": forced_live_by_time,
         "knockoutWritten": ko,
         "unmatchedFinished": unmatched,
     })
     print(f"Eliminatorias escritas: {ko}")
     print(f"Escritos: {wrote}")
     print(f"Meta con estadio: {meta_venue} / {meta} (sin estadio: {meta_no_venue})")
-    print(f"Live escritos: {live_written} (en juego: {live_active})")
+    print(f"Live escritos: {live_written} (en juego: {live_active}, forzados por horario: {forced_live_by_time})")
     if unmatched:
         print("SIN MAPEAR (avisar para agregar alias):")
         for u in unmatched: print("  -",u)
