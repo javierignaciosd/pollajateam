@@ -1,4 +1,4 @@
- #!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Actualiza los resultados reales del Mundial 2026 en tu Firebase Realtime Database.
 Consulta football-data.org (tier gratis, competencia WC) y escribe los partidos
@@ -310,7 +310,7 @@ def main():
         sc=(m.get("score") or {}); ft=sc.get("fullTime") or {}; rt=sc.get("regularTime") or {}; et=sc.get("extraTime") or {}; pen=sc.get("penalties") or {}
         p90h,p90a,score_used,regular_available=score_regular_90(m)
         rec={
-          "stage":lab,"order":order,"date":m.get("utcDate"),"status":m.get("status"),
+          "id":m.get("id"),"stage":lab,"stageRaw":st,"order":order,"date":m.get("utcDate"),"status":m.get("status"),
           "venue":m.get("venue"),
           "home":team_obj(m.get("homeTeam")),"away":team_obj(m.get("awayTeam")),
           # hg/ag quedan como resultado valido para la polla (90' + descuentos)

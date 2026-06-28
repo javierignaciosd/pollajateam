@@ -1388,6 +1388,37 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
 .kopred[data-c=exact]{border-left-color:var(--exact);background:rgba(43,227,139,.10)}.kopred[data-c=gandif]{border-left-color:var(--gandif);background:rgba(25,198,255,.10)}.kopred[data-c=gana]{border-left-color:var(--gana);background:rgba(255,196,46,.10)}.kopred[data-c=nada]{border-left-color:var(--nada);opacity:.68}.kopred[data-c=pend]{border-left-color:#41538f}
 @media(max-width:700px){.ko16grid{grid-template-columns:1fr}.ko16teams b{white-space:normal;font-size:14px}.kopred{align-items:flex-start}.kopnums{gap:5px}.kopnums span{font-size:18px}.ko16top{flex-wrap:wrap}.ko16top i{margin-left:0}}
 
+
+/* ===== v7.19 Llave oficial desde API para eliminatorias ===== */
+.koapi-scroll{overflow:auto;padding:8px 2px 14px;margin-top:10px}
+.koapi-bracket{min-width:980px;display:grid;grid-template-columns:repeat(6,minmax(165px,1fr));gap:13px;align-items:start}
+.koapi-col{display:grid;gap:10px;align-content:start}
+.koapi-col h3{font-family:'Saira Condensed';font-size:18px;line-height:1;text-transform:uppercase;letter-spacing:.7px;color:var(--gold);margin:0 0 2px}
+.koapi-match{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel2));border-radius:13px;padding:9px 10px;box-shadow:0 8px 22px rgba(0,0,0,.14)}
+.koapi-match.done{border-color:rgba(43,227,139,.38)}
+.koapi-mid{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;color:var(--cyan)}
+.koapi-mid small{font-size:9px;color:var(--mut2);font-weight:800;text-align:right}
+.koapi-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:7px;padding:5px 0;border-top:1px solid rgba(255,255,255,.04)}
+.koapi-row:first-of-type{border-top:0}
+.koapi-row img,.koapi-row .flem{width:24px;height:16px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(255,255,255,.12);font-size:14px;display:flex;align-items:center;justify-content:center}
+.koapi-row span{font-weight:800;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mut)}
+.koapi-row b{font-family:'Saira Condensed';font-size:21px;color:#fff}
+.koapi-row.win span,.koapi-row.win b{color:var(--exact)}
+.koapi-row.win::before{content:"▸";color:var(--exact);font-size:12px;margin-right:-4px}
+.koapi-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px;font-size:9.5px;color:var(--mut2);font-weight:700;line-height:1.25}
+.koapi-pen{color:var(--gold)}
+.koapi-note{margin-top:7px;border-top:1px dashed rgba(255,255,255,.10);padding-top:7px;font-size:10px;color:var(--mut);font-weight:700;line-height:1.25}
+.koapi-note b{color:var(--gold)}
+@media (max-width:760px){
+  .koapi-bracket{min-width:900px;grid-template-columns:repeat(6,150px);gap:10px}
+  .koapi-match{padding:8px}
+  .koapi-row span{font-size:11.5px}
+  .koapi-row b{font-size:19px}
+}
+
+.koapi-row{position:relative}
+.koapi-row.win{box-shadow:inset 3px 0 0 var(--exact);padding-left:7px}
+.koapi-row.win::before{content:"";display:none}
 </style>
 </head>
 <body>
@@ -2334,6 +2365,111 @@ function slotHtml(code){
 function bmatch(id,a,b,cls='projected'){
   return `<div class="bmatch ${cls}"><div class="bmid">M${id}<small>${cls==='liveko'?'oficial':'proy.'}</small></div>${slotHtml(a)}${slotHtml(b)}</div>`;
 }
+
+function koApiEntries(){
+  return Object.entries(ko||{}).map(([id,m])=>({...m,_id:id})).filter(m=>m.home||m.away)
+    .sort((a,b)=>koStageOrder(a)-koStageOrder(b)||String(a.date||'').localeCompare(String(b.date||''))||String(a._id||'').localeCompare(String(b._id||'')));
+}
+function koStageOrder(m){
+  const s=String(m.stage||m.stageRaw||'').toLowerCase();
+  if(s.includes('16vos')||s.includes('last_32')||s.includes('round_of_32')) return 1;
+  if(s.includes('8vos')||s.includes('last_16')||s.includes('round_of_16')) return 2;
+  if(s.includes('4tos')||s.includes('quarter')) return 3;
+  if(s.includes('semi')) return 4;
+  if(s.includes('3er')||s.includes('third')) return 5;
+  if(s.includes('final')) return 6;
+  return Number(m.order||9);
+}
+function koStageTitle(order){
+  return ({1:'16vos',2:'8vos',3:'4tos',4:'Semifinal',5:'3er puesto',6:'Final'})[order] || 'Eliminatoria';
+}
+function koStatusText(m){
+  const st=String(m.status||'').toUpperCase();
+  if(st==='FINISHED') return 'Finalizado';
+  if(st==='IN_PLAY'||st==='PAUSED'||st==='LIVE') return LIVE_STATUS_LABEL[st]||'En juego';
+  return m.date?new Date(m.date).toLocaleString('es-CL',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Por definir';
+}
+function koOfficialScore(m,side){
+  return side==='h'
+    ? firstNum(m.officialHg,m.fullTimeHome,m.hg)
+    : firstNum(m.officialAg,m.fullTimeAway,m.ag);
+}
+function koPollaScore(m,side){
+  return side==='h'
+    ? firstNum(m.pollaHg,m.hg90,m.regularHg,m.regularHome,m.regularTime?.home,m.hg)
+    : firstNum(m.pollaAg,m.ag90,m.regularAg,m.regularAway,m.regularTime?.away,m.ag);
+}
+function koDisplayScore(m,side){
+  const st=String(m.status||'').toUpperCase();
+  const s=koOfficialScore(m,side);
+  if(s!=null) return s;
+  if(st==='IN_PLAY'||st==='PAUSED'||st==='LIVE') return '•';
+  return '';
+}
+function koWinnerSide(m){
+  if(m.winner==='HOME_TEAM') return 'h';
+  if(m.winner==='AWAY_TEAM') return 'a';
+  return '';
+}
+function koTeamApiRow(t,score,win){
+  const name=koTeamName(t)||'Por definir';
+  const iso=(typeof t==='object'&&(t.iso||''))||'';
+  const fl=(typeof t==='object'&&(t.flag||''))||'🏳️';
+  return `<div class="koapi-row ${win?'win':''}">${flag(iso,fl,34)}<span>${escHtml(name)}</span><b>${score!==''&&score!=null?escHtml(score):''}</b></div>`;
+}
+function koApiMatchCard(m){
+  const order=koStageOrder(m);
+  const st=String(m.status||'').toUpperCase();
+  const fin=st==='FINISHED';
+  const winner=koWinnerSide(m);
+  const hs=koDisplayScore(m,'h'), as=koDisplayScore(m,'a');
+  const ph=firstNum(m.ph), pa=firstNum(m.pa);
+  const pen=(ph!=null&&pa!=null)?`<span class="koapi-pen">Pen ${ph}-${pa}</span>`:'';
+  const p90h=koPollaScore(m,'h'), p90a=koPollaScore(m,'a');
+  const oh=koOfficialScore(m,'h'), oa=koOfficialScore(m,'a');
+  const show90=(p90h!=null&&p90a!=null&&(oh!==p90h||oa!==p90a||String(m.duration||'').toUpperCase().includes('EXTRA')||String(m.duration||'').toUpperCase().includes('PENAL')));
+  const note90=show90?`<div class="koapi-note">Polla 90': <b>${p90h}-${p90a}</b> · Alargue/penales no cuentan</div>`:'';
+  const vinfo=venueInfo(m.venue);
+  return `<div class="koapi-match ${fin?'done':''}" data-koid="${escHtml(m._id||'')}">
+    <div class="koapi-mid"><span>${koStageTitle(order)}</span><small>${koStatusText(m)}</small></div>
+    ${koTeamApiRow(m.home,hs,winner==='h')}
+    ${koTeamApiRow(m.away,as,winner==='a')}
+    <div class="koapi-meta">${pen}${vinfo?`<span>📍 ${escHtml(vinfo)}</span>`:''}</div>
+    ${note90}
+  </div>`;
+}
+function actualKoBracketHTML(){
+  const arr=koApiEntries();
+  if(!arr.length) return '';
+  const stages=[1,2,3,4,6,5].map(order=>{
+    const items=arr.filter(m=>koStageOrder(m)===order);
+    if(!items.length) return '';
+    return `<div class="koapi-col ${order===6?'final':''}"><h3>${koStageTitle(order)}</h3>${items.map(koApiMatchCard).join('')}</div>`;
+  }).filter(Boolean).join('');
+  return `<div class="bnote"><b>Llave oficial:</b> estos cruces vienen desde football-data.org. Para la puntuación de la polla, en eliminatorias cuenta solo el resultado al final del segundo tiempo (90' + descuentos).</div>
+    <div class="koapi-scroll"><div class="koapi-bracket">${stages}</div></div>`;
+}
+function projectedKoBracketHTML(){
+  const left32=[
+    bmatch(74,'1E','3ABCDF'), bmatch(77,'1I','3CDFGH'), bmatch(73,'2A','2B'), bmatch(75,'1F','2C'),
+    bmatch(83,'2K','2L'), bmatch(84,'1H','2J'), bmatch(81,'1D','3BEFIJ'), bmatch(82,'1G','3AEHIJ')
+  ].join('');
+  const left16=[bmatch(89,'W74','W77'), bmatch(90,'W73','W75'), bmatch(93,'W83','W84'), bmatch(94,'W81','W82')].join('');
+  const leftQF=[bmatch(97,'W89','W90'), bmatch(98,'W93','W94')].join('');
+  const center=[bmatch(101,'W97','W98'), bmatch(104,'W101','W102','bfinal'), bmatch(103,'L101','L102','bbronze')].join('');
+  const rightQF=[bmatch(99,'W91','W92'), bmatch(100,'W95','W96')].join('');
+  const right16=[bmatch(91,'W76','W78'), bmatch(92,'W79','W80'), bmatch(95,'W86','W88'), bmatch(96,'W85','W87')].join('');
+  const right32=[
+    bmatch(76,'1C','2F'), bmatch(78,'2E','2I'), bmatch(79,'1A','3CEFH'), bmatch(80,'1L','3EHIJK'),
+    bmatch(86,'1J','2H'), bmatch(88,'2D','2G'), bmatch(85,'1B','3EFGJ'), bmatch(87,'1K','3DBJL')
+  ].join('');
+  return `<div class="bnote"><b>Proyección:</b> aún no hay cruces oficiales desde la API. Se muestra una referencia con líderes/segundos actuales de cada grupo.</div>
+    <div class="bracket-scroll"><div class="bracket-wrap">
+      <div class="bcol r32">${left32}</div><div class="bcol r16">${left16}</div><div class="bcol qf">${leftQF}</div>
+      <div class="bcenter">${center}</div>
+      <div class="bcol qf">${rightQF}</div><div class="bcol r16">${right16}</div><div class="bcol r32">${right32}</div>
+    </div></div>`;
+}
 function officialKoCards(){
   const arr=Object.values(ko||{}).sort((a,b)=>(a.order||9)-(b.order||9)||String(a.date||'').localeCompare(String(b.date||'')));
   if(!arr.length) return '';
@@ -2362,26 +2498,9 @@ function ko16CardsHTML(){
 
 function renderKO(){
   const nav=document.getElementById('konav'), wrap=document.getElementById('kowrap');
-  nav.innerHTML='<button class="kotab on" type="button">Llave proyectada</button>';
-  const left32=[
-    bmatch(74,'1E','3ABCDF'), bmatch(77,'1I','3CDFGH'), bmatch(73,'2A','2B'), bmatch(75,'1F','2C'),
-    bmatch(83,'2K','2L'), bmatch(84,'1H','2J'), bmatch(81,'1D','3BEFIJ'), bmatch(82,'1G','3AEHIJ')
-  ].join('');
-  const left16=[bmatch(89,'W74','W77'), bmatch(90,'W73','W75'), bmatch(93,'W83','W84'), bmatch(94,'W81','W82')].join('');
-  const leftQF=[bmatch(97,'W89','W90'), bmatch(98,'W93','W94')].join('');
-  const center=[bmatch(101,'W97','W98'), bmatch(104,'W101','W102','bfinal'), bmatch(103,'L101','L102','bbronze')].join('');
-  const rightQF=[bmatch(99,'W91','W92'), bmatch(100,'W95','W96')].join('');
-  const right16=[bmatch(91,'W76','W78'), bmatch(92,'W79','W80'), bmatch(95,'W86','W88'), bmatch(96,'W85','W87')].join('');
-  const right32=[
-    bmatch(76,'1C','2F'), bmatch(78,'2E','2I'), bmatch(79,'1A','3CEFH'), bmatch(80,'1L','3EHIJK'),
-    bmatch(86,'1J','2H'), bmatch(88,'2D','2G'), bmatch(85,'1B','3EFGJ'), bmatch(87,'1K','3DBJL')
-  ].join('');
-  wrap.innerHTML=`<div class="bnote"><b>Proyección:</b> se rellena con los líderes y segundos actuales de cada grupo. Los mejores terceros quedan como placeholder porque dependen de combinaciones variables.</div>
-    <div class="bracket-scroll"><div class="bracket-wrap">
-      <div class="bcol r32">${left32}</div><div class="bcol r16">${left16}</div><div class="bcol qf">${leftQF}</div>
-      <div class="bcenter">${center}</div>
-      <div class="bcol qf">${rightQF}</div><div class="bcol r16">${right16}</div><div class="bcol r32">${right32}</div>
-    </div></div>${officialKoCards()}${ko16CardsHTML()}`;
+  const hasApi=koApiEntries().length>0;
+  nav.innerHTML=`<button class="kotab on" type="button">${hasApi?'Llave oficial API':'Llave proyectada'}</button>`;
+  wrap.innerHTML=`${hasApi?actualKoBracketHTML():projectedKoBracketHTML()}${ko16CardsHTML()}`;
 }
 function dmatchCard(mi){
   const m=M[mi], r=scoreForMatch(m.idx)||{}; const done=r.l!=null&&r.l!==''&&r.v!=null&&r.v!=='';
