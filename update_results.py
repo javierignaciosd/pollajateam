@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 """
 Actualiza los resultados reales del Mundial 2026 en tu Firebase Realtime Database.
 Consulta football-data.org (tier gratis, competencia WC) y escribe los partidos
@@ -188,6 +188,34 @@ def score_goals(m):
         return None, None
     return int(h), int(a)
 
+def score_regular_90(m):
+    """Resultado válido para la polla en eliminatorias: final del segundo tiempo.
+
+    Regla:
+      - Si terminó en 90 minutos, usa fullTime.
+      - Si hubo alargue o penales, usa regularTime cuando la API lo entregue.
+      - extraTime y penalties se guardan solo como referencia; no cuentan para puntaje.
+    """
+    sc=(m.get("score") or {})
+    ft=sc.get("fullTime") or {}
+    rt=sc.get("regularTime") or {}
+    dur=str(sc.get("duration") or "").upper()
+
+    # football-data.org v4 usa regularTime para el marcador tras 90' cuando hay ET/penales.
+    h=rt.get("home")
+    a=rt.get("away")
+    used="regularTime"
+
+    if h is None or a is None:
+        h=ft.get("home")
+        a=ft.get("away")
+        used="fullTime"
+
+    if h is None or a is None:
+        return None, None, used, False
+
+    return int(h), int(a), used, bool(rt.get("home") is not None and rt.get("away") is not None)
+
 def parse_utc(dt):
     if not dt:
         return None
@@ -279,13 +307,23 @@ def main():
         st=(m.get("stage") or "").upper()
         if not st or "GROUP" in st: continue
         lab,order=STAGE.get(st,(st.replace("_"," ").title(),9))
-        sc=(m.get("score") or {}); ft=sc.get("fullTime") or {}; pen=sc.get("penalties") or {}
+        sc=(m.get("score") or {}); ft=sc.get("fullTime") or {}; rt=sc.get("regularTime") or {}; et=sc.get("extraTime") or {}; pen=sc.get("penalties") or {}
+        p90h,p90a,score_used,regular_available=score_regular_90(m)
         rec={
           "stage":lab,"order":order,"date":m.get("utcDate"),"status":m.get("status"),
           "venue":m.get("venue"),
           "home":team_obj(m.get("homeTeam")),"away":team_obj(m.get("awayTeam")),
-          "hg":ft.get("home"),"ag":ft.get("away"),
-          "ph":pen.get("home"),"pa":pen.get("away"),"winner":sc.get("winner"),
+          # hg/ag quedan como resultado valido para la polla (90' + descuentos)
+          "hg":p90h,"ag":p90a,
+          "pollaHg":p90h,"pollaAg":p90a,
+          "scoreUsedForPolla":score_used,
+          "regularTimeAvailable":regular_available,
+          "rule":"90min_final_segundo_tiempo",
+          # Resultado oficial completo y referencias de alargue/penales
+          "officialHg":ft.get("home"),"officialAg":ft.get("away"),
+          "regularHg":rt.get("home"),"regularAg":rt.get("away"),
+          "extraHg":et.get("home"),"extraAg":et.get("away"),
+          "ph":pen.get("home"),"pa":pen.get("away"),"winner":sc.get("winner"),"duration":sc.get("duration"),
         }
         fb_put(f"polla/ko/{m.get('id')}", rec)
         ko+=1
