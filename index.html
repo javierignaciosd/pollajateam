@@ -1616,18 +1616,48 @@ const DAYS=['dom','lun','mar','mié','jue','vie','sáb'], MON=['ene','feb','mar'
 function normTeamName(s){
   s=String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
   const a={
-    'czechia':'republica checa','czech republic':'republica checa','republica checa':'republica checa',
-    'korea republic':'corea del sur','south korea':'corea del sur','corea del sur':'corea del sur',
-    'usa':'estados unidos','united states':'estados unidos','estados unidos':'estados unidos',
+    // Grupo / idioma API football-data.org
+    'czechia':'republica checa','czech republic':'republica checa','czech rep':'republica checa','republica checa':'republica checa',
+    'korea republic':'corea del sur','south korea':'corea del sur','republic of korea':'corea del sur','corea del sur':'corea del sur',
+    'usa':'estados unidos','united states':'estados unidos','united states of america':'estados unidos','estados unidos':'estados unidos','eeuu':'estados unidos',
     'turkiye':'turquia','turkey':'turquia','turquia':'turquia',
-    'ivory coast':'costa de marfil','cote d ivoire':'costa de marfil','costa de marfil':'costa de marfil',
+    'ivory coast':'costa de marfil','cote divoire':'costa de marfil','cote d ivoire':'costa de marfil','costa de marfil':'costa de marfil',
     'curacao':'curazao','curazao':'curazao',
     'saudi arabia':'arabia saudita','arabia saudita':'arabia saudita',
     'cape verde':'cabo verde','cabo verde':'cabo verde',
     'new zealand':'nueva zelanda','nueva zelanda':'nueva zelanda',
-    'dr congo':'rd del congo','congo dr':'rd del congo','rd del congo':'rd del congo',
-    'netherlands':'paises bajos','paises bajos':'paises bajos',
-    'bosnia herzegovina':'bosnia y herzegovina','bosnia y herzegovina':'bosnia y herzegovina'
+    'dr congo':'rd del congo','rd congo':'rd del congo','congo dr':'rd del congo','democratic republic of congo':'rd del congo','congo democratic republic':'rd del congo','rd del congo':'rd del congo','rd congo kinshasa':'rd del congo',
+    'netherlands':'paises bajos','holland':'paises bajos','paises bajos':'paises bajos',
+    'bosnia and herzegovina':'bosnia y herzegovina','bosnia herzegovina':'bosnia y herzegovina','bosnia y herzegovina':'bosnia y herzegovina','bosnia':'bosnia y herzegovina',
+
+    // 16avos / nombres Forms vs API
+    'south africa':'sudafrica','sudafrica':'sudafrica',
+    'canada':'canada',
+    'brazil':'brasil','brasil':'brasil',
+    'japan':'japon','japon':'japon',
+    'germany':'alemania','alemania':'alemania',
+    'paraguay':'paraguay',
+    'morocco':'marruecos','marruecos':'marruecos',
+    'norway':'noruega','noruega':'noruega',
+    'france':'francia','francia':'francia',
+    'sweden':'suecia','suecia':'suecia',
+    'mexico':'mexico',
+    'ecuador':'ecuador',
+    'england':'inglaterra','inglaterra':'inglaterra',
+    'belgium':'belgica','belgica':'belgica',
+    'senegal':'senegal',
+    'spain':'espana','espana':'espana',
+    'austria':'austria',
+    'portugal':'portugal',
+    'croatia':'croacia','croacia':'croacia',
+    'switzerland':'suiza','suiza':'suiza',
+    'algeria':'argelia','argelia':'argelia',
+    'australia':'australia',
+    'egypt':'egipto','egipto':'egipto',
+    'argentina':'argentina',
+    'colombia':'colombia',
+    'ghana':'ghana',
+    'qatar':'qatar'
   };
   return a[s]||s;
 }
@@ -1815,7 +1845,27 @@ function firstNum(...vals){
 function koTeamName(t){return typeof t==='string'?t:(t?.name||t?.shortName||'');}
 function koOfficialRecord(km){
   const key=venuePairKey(km.home,km.away);
-  return Object.values(ko||{}).find(r=>venuePairKey(koTeamName(r.home),koTeamName(r.away))===key) || null;
+  const entries=Object.values(ko||{}).filter(Boolean);
+
+  // 1) Match normal por dupla de equipos, traduciendo nombres inglés/español.
+  let hit=entries.find(r=>venuePairKey(koTeamName(r.home),koTeamName(r.away))===key);
+  if(hit) return hit;
+
+  // 2) Fallback por campos alternativos que a veces vienen desde la API/script.
+  hit=entries.find(r=>{
+    const h=koTeamName(r.home)||koTeamName(r.homeTeam)||koTeamName(r.localTeam)||koTeamName(r.teamHome);
+    const a=koTeamName(r.away)||koTeamName(r.awayTeam)||koTeamName(r.visitorTeam)||koTeamName(r.teamAway);
+    return venuePairKey(h,a)===key;
+  });
+  if(hit) return hit;
+
+  // 3) Fallback defensivo: compara si los dos nombres normalizados aparecen en un texto del registro.
+  const hNeed=normTeamName(km.home), aNeed=normTeamName(km.away);
+  hit=entries.find(r=>{
+    const txt=normTeamName(JSON.stringify(r));
+    return txt.includes(hNeed) && txt.includes(aNeed);
+  });
+  return hit || null;
 }
 function koScoreForMatch(km){
   const rec=koOfficialRecord(km);
@@ -2550,8 +2600,9 @@ function ko16VenueText(km){
   return rec.venue ? venueInfo(rec.venue) : '';
 }
 function ko16StatusText(ki){
-  const km=KO16[ki], rec=ko16OfficialMeta(km), st=String(rec.status||'').toUpperCase();
+  const km=KO16[ki], rec=ko16OfficialMeta(km), st=String(rec.status||rec.rawStatus||'').toUpperCase();
   if(koIsPlayed(km)) return 'Jugado';
+  if(rec.forcedLiveByTime) return 'En juego';
   if(['IN_PLAY','PAUSED','LIVE','EXTRA_TIME','PENALTY_SHOOTOUT'].includes(st)) return 'En juego';
   const d=ko16DateObj(km), now=new Date();
   if(d && d<=now && now<=new Date(d.getTime()+165*60000)) return 'En juego';
