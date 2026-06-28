@@ -1429,6 +1429,20 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
 .ko16date .kopred b{font-size:12px}.ko16date .kopred small{font-size:9.8px}.ko16date .kopnums span{font-size:18px}
 @media(max-width:700px){.ko16date .ko16preds{max-height:none}.ko16date .kopred{align-items:center}.ko16date .kopnums{flex-wrap:wrap;justify-content:flex-end}}
 
+
+
+/* ===== v7.21: 16avos también aparecen en Partido en Vivo ===== */
+.live-now .ko16date.live-spotlight{
+  border-color:rgba(43,227,139,.50);
+  box-shadow:0 12px 30px rgba(0,0,0,.18),0 0 0 1.5px rgba(43,227,139,.22) inset;
+}
+.live-now .ko16date .ko16preds{
+  margin-top:10px;
+}
+.live-now .ko16date .np{
+  color:var(--exact)!important;
+}
+
 </style>
 </head>
 <body>
@@ -2273,13 +2287,32 @@ function matchLivePredRows(mi, limit=6){
   }).sort((a,b)=>b.pts-a.pts||CATORDER[a.cat]-CATORDER[b.cat]||a.nm.localeCompare(b.nm));
   return arr.slice(0,limit);
 }
+function ko16LiveNowCardHTML(ki){
+  return ko16DateCard(ki).replace('class="dmatch ko16date"', 'class="dmatch ko16date live-card live-spotlight"');
+}
+function isKO16Live(ki){
+  const km=KO16[ki];
+  if(!km || koIsPlayed(km)) return false;
+  return ko16StatusText(ki)==='En juego';
+}
 function renderLiveNow(){
   const sec=document.getElementById('liveNowSection'), wrap=document.getElementById('liveNowContent');
   if(!sec||!wrap) return;
-  const liveMatches=M.map((m,mi)=>({m,mi})).filter(o=>isProvisionalMatch(o.m.idx));
-  if(!liveMatches.length){ sec.classList.add('hide'); wrap.innerHTML=''; return; }
+
+  const liveMatches=M.map((m,mi)=>({type:'group',m,mi})).filter(o=>isProvisionalMatch(o.m.idx));
+  const liveKo16=KO16.map((km,ki)=>({type:'ko16',km,ki})).filter(o=>isKO16Live(o.ki));
+
+  if(!liveMatches.length && !liveKo16.length){
+    sec.classList.add('hide');
+    wrap.innerHTML='';
+    return;
+  }
+
   sec.classList.remove('hide');
-  wrap.innerHTML=liveMatches.map(({m,mi})=>matchCardHTML(m,mi,{spotlight:true})).join('');
+  wrap.innerHTML=[
+    ...liveMatches.map(({m,mi})=>matchCardHTML(m,mi,{spotlight:true})),
+    ...liveKo16.map(({ki})=>ko16LiveNowCardHTML(ki))
+  ].join('');
 }
 
 function radarMatchHTML(m, sub='', val='Abrir', cls='warn'){
@@ -2548,7 +2581,7 @@ function openKO16Match(ki){
   const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Resultado oficial: ${r.officialL}-${r.officialV}. Para la polla cuenta ${r.l}-${r.v} a los 90'.</div>`:'';
   const h=`<div class="mhd"><div class="mt2">${flag(m.hiso,m.hf,80)}<span>${escHtml(m.home)}</span></div><div class="mvs">${done?`${r.l}-${r.v}`:'vs'}<small>${escHtml(status)} · válido 90'</small></div><div class="mt2">${flag(m.aiso,m.af,80)}<span>${escHtml(m.away)}</span></div></div><div class="minfo"><b>${ko16DateText(m)}</b>${vinfo?`<br>📍 ${escHtml(vinfo)}`:''}<br><b style="color:var(--gold)">Regla:</b> cuenta solo el marcador al final del segundo tiempo. Alargue y penales no modifican puntaje.</div>${official}<div class="ko16preds">${ko16PredRowsHTML(ki,r)}</div>`;
   document.getElementById('mbody').innerHTML=h;
-  document.getElementById('modal').classList.add('show');
+  document.getElementById('modal').classList.add('on');
 }
 function nextPollaItemsWindow(){
   const now=new Date(), until=new Date(now.getTime()+24*60*60*1000);
@@ -2765,7 +2798,7 @@ document.getElementById('teampanel').addEventListener('click',e=>{const b=e.targ
 document.getElementById('realGroupChips').addEventListener('click',e=>{const b=e.target.closest('[data-real-group]');if(b){selRealGroup=b.dataset.realGroup;selRealTeam=null;renderRealTeamExplorer();}});
 document.getElementById('realTeamChips').addEventListener('click',e=>{const b=e.target.closest('[data-real-team-chip]');if(b){selRealTeam=b.dataset.realTeamChip;renderRealTeamExplorer();}});
 document.getElementById('realTeamPanel').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(b){openMatch(+b.dataset.open);}});
-document.getElementById('liveNowContent').addEventListener('click',e=>{const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
+document.getElementById('liveNowContent').addEventListener('click',e=>{const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
 document.getElementById('viewReal').addEventListener('click',e=>{const b=e.target.closest('tr[data-real-team]');if(b){selRealGroup=b.dataset.realGroup;selRealTeam=b.dataset.realTeam;renderRealTeamExplorer();document.getElementById('realTeamExplorer').scrollIntoView({behavior:'smooth',block:'start'});}});
 document.getElementById('pollaInsights').addEventListener('click',e=>{const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
 document.getElementById('pollaInsights').addEventListener('change',e=>{if(e.target.id==='insightPlayerSel'){selInsightPlayer=+e.target.value;renderInsights();} if(e.target.id==='duelA'){selDuelA=+e.target.value;renderInsights();} if(e.target.id==='duelB'){selDuelB=+e.target.value;renderInsights();}});
