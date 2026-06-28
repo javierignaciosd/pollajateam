@@ -1419,6 +1419,16 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
 .koapi-row{position:relative}
 .koapi-row.win{box-shadow:inset 3px 0 0 var(--exact);padding-left:7px}
 .koapi-row.win::before{content:"";display:none}
+
+
+/* ===== v7.20 Por fecha y Radar incluyen 16avos desde API ===== */
+.ko16date{cursor:pointer}
+.ko16date:hover{border-color:rgba(25,198,255,.45);transform:translateY(-2px)}
+.ko16date .ko16preds{margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding:9px;max-height:330px;overflow:auto}
+.ko16date .kopred{padding:7px 9px}
+.ko16date .kopred b{font-size:12px}.ko16date .kopred small{font-size:9.8px}.ko16date .kopnums span{font-size:18px}
+@media(max-width:700px){.ko16date .ko16preds{max-height:none}.ko16date .kopred{align-items:center}.ko16date .kopnums{flex-wrap:wrap;justify-content:flex-end}}
+
 </style>
 </head>
 <body>
@@ -2283,8 +2293,8 @@ function radarMatchHTML(m, sub='', val='Abrir', cls='warn'){
 }
 function renderInsights(){
   const wrap=document.getElementById('pollaInsights'); if(!wrap) return;
-  const next=nextMatchesWindow();
-  const nextRows=next.map(m=>{const v=matchVenueInfo(m);return radarMatchHTML(m,`${matchDateText(m,'short')} · Grupo ${m.group}${v?` · ${escHtml(v)}`:''}`,'Abrir','warn');}).join('')||'<div class="mini">No hay próximos partidos detectados.</div>';
+  const next=nextPollaItemsWindow();
+  const nextRows=next.map(radarPollaItemHTML).join('')||'<div class="mini">No hay próximos partidos detectados.</div>';
   const hotRows=hotPollaMatches().map(x=>radarMatchHTML(x.m,`Partido dividido · ${x.sp.unique} marcadores distintos · favorito polla: ${escHtml(x.sp.fav)}`,x.sp.unique,'warn')).join('')||'<div class="mini">Aún no hay partidos clave.</div>';
   const k=lastPlayedDateKey(), daily=k?participantPointsForMatches(matchesForDateKey(k)).slice(0,3):[];
   const dailyRows=daily.map((r,i)=>`<div class="irow" data-player="${r.pi}"><span>${i+1}. ${escHtml(r.nm)}<div class="mut">Última fecha ${k}</div></span><span class="val">${r.pts}</span></div>`).join('')||'<div class="mini">Todavía no hay fecha jugada con metadata.</div>';
@@ -2485,6 +2495,83 @@ function officialKoCards(){
   }).join('');
   return `<div class="koofficial"><h3>Partidos oficiales cargados desde la API</h3><div class="kogrid">${cards}</div></div>`;
 }
+function ko16OfficialMeta(km){
+  const rec=koOfficialRecord(km);
+  return rec||{};
+}
+function ko16DateObj(km){
+  const rec=ko16OfficialMeta(km);
+  if(!rec.date) return null;
+  const d=new Date(rec.date);
+  return Number.isNaN(d.getTime())?null:d;
+}
+function ko16DateText(km,mode='full'){
+  const d=ko16DateObj(km);
+  if(!d) return 'Fecha por confirmar';
+  return mode==='short'
+    ? d.toLocaleString('es-CL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+    : d.toLocaleString('es-CL',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+function ko16VenueText(km){
+  const rec=ko16OfficialMeta(km);
+  return rec.venue ? venueInfo(rec.venue) : '';
+}
+function ko16StatusText(ki){
+  const km=KO16[ki], rec=ko16OfficialMeta(km), st=String(rec.status||'').toUpperCase();
+  if(koIsPlayed(km)) return 'Jugado';
+  if(['IN_PLAY','PAUSED','LIVE','EXTRA_TIME','PENALTY_SHOOTOUT'].includes(st)) return 'En juego';
+  const d=ko16DateObj(km), now=new Date();
+  if(d && d<=now && now<=new Date(d.getTime()+165*60000)) return 'En juego';
+  return 'Próximo';
+}
+function ko16PredRowsHTML(ki,r){
+  return (KO16_PR[ki]||[]).map((pr,pi)=>{const c=hasBasicScore(r)?category(pr.l,pr.v,r):'pend', pts=catPts(c); return `<div class="kopred" data-c="${c}"><div><b>${escHtml(P[pi])}</b><small>"${escHtml(pr.raw)}"${pr.winner?` · ganador: ${escHtml(pr.winner)}`:''}</small></div><div class="kopnums"><span>${pr.l}-${pr.v}</span><em class="badge ${c}">${CATLABEL[c]}</em><strong>${c==='pend'?'—':`+${pts}`}</strong></div></div>`;}).join('');
+}
+function ko16DateCard(ki){
+  const m=KO16[ki], r=koScoreForMatch(m), done=hasBasicScore(r), vinfo=ko16VenueText(m), status=ko16StatusText(ki);
+  const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Oficial: ${r.officialL}-${r.officialV} · Para la polla cuenta 90'</div>`:'';
+  return `<div class="dmatch ko16date" data-ko16="${ki}">
+    <div class="dmtop"><span class="gp">16avos</span><span>${escHtml(m.id)}</span><span class="np">${escHtml(status)}</span></div>
+    <div class="dmrow">
+      <div class="dmt">${flag(m.hiso,m.hf,40)}<span class="nm">${escHtml(m.home)}</span></div>
+      <div class="dmsc${done?'':' pend'}">${done?`${r.l} - ${r.v}`:ko16DateText(m,'short')}</div>
+      <div class="dmt aw"><span class="nm">${escHtml(m.away)}</span>${flag(m.aiso,m.af,40)}</div>
+    </div>
+    ${vinfo?`<div class="dmven">📍 ${escHtml(vinfo)}</div>`:''}${official}
+    <div class="ko16preds">${ko16PredRowsHTML(ki,r)}</div>
+  </div>`;
+}
+function openKO16Match(ki){
+  const m=KO16[ki]; if(!m)return;
+  document.querySelector('#modal .mcard').classList.add('wide');
+  const r=koScoreForMatch(m), done=hasBasicScore(r), vinfo=ko16VenueText(m), status=ko16StatusText(ki);
+  const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Resultado oficial: ${r.officialL}-${r.officialV}. Para la polla cuenta ${r.l}-${r.v} a los 90'.</div>`:'';
+  const h=`<div class="mhd"><div class="mt2">${flag(m.hiso,m.hf,80)}<span>${escHtml(m.home)}</span></div><div class="mvs">${done?`${r.l}-${r.v}`:'vs'}<small>${escHtml(status)} · válido 90'</small></div><div class="mt2">${flag(m.aiso,m.af,80)}<span>${escHtml(m.away)}</span></div></div><div class="minfo"><b>${ko16DateText(m)}</b>${vinfo?`<br>📍 ${escHtml(vinfo)}`:''}<br><b style="color:var(--gold)">Regla:</b> cuenta solo el marcador al final del segundo tiempo. Alargue y penales no modifican puntaje.</div>${official}<div class="ko16preds">${ko16PredRowsHTML(ki,r)}</div>`;
+  document.getElementById('mbody').innerHTML=h;
+  document.getElementById('modal').classList.add('show');
+}
+function nextPollaItemsWindow(){
+  const now=new Date(), until=new Date(now.getTime()+24*60*60*1000);
+  const groups=M.filter(m=>!isPlayed(m)&&meta[m.idx]?.date).map(m=>({type:'group',m,d:new Date(meta[m.idx].date)}));
+  const kos=KO16.map((km,ki)=>({type:'ko16',km,ki,d:ko16DateObj(km)})).filter(x=>x.d && !koIsPlayed(x.km));
+  let arr=[...groups,...kos].filter(x=>x.d>=now&&x.d<=until).sort((a,b)=>a.d-b.d).slice(0,5);
+  if(!arr.length){
+    arr=[...groups,...kos].filter(x=>x.d&&x.d>=now).sort((a,b)=>a.d-b.d).slice(0,5);
+  }
+  if(!arr.length){
+    arr=M.filter(m=>!isPlayed(m)).slice(0,5).map(m=>({type:'group',m,d:null}));
+  }
+  return arr;
+}
+function radarPollaItemHTML(item){
+  if(item.type==='ko16'){
+    const m=item.km, v=ko16VenueText(m);
+    return `<div class="irow radar-row" data-ko16="${item.ki}" title="Abrir detalle del partido"><span><span class="radar-flags">${flag(m.hiso,m.hf,40)}<b>vs</b>${flag(m.aiso,m.af,40)}</span><div class="mut">${ko16DateText(m,'short')} · 16avos · válido 90'${v?` · ${escHtml(v)}`:''}</div></span><span class="val warn">Abrir</span></div>`;
+  }
+  const m=item.m, v=matchVenueInfo(m);
+  return radarMatchHTML(m,`${matchDateText(m,'short')} · Grupo ${m.group}${v?` · ${escHtml(v)}`:''}`,'Abrir','warn');
+}
+
 function ko16CardsHTML(){
   const cards=KO16.map((m,ki)=>{
     const r=koScoreForMatch(m);
@@ -2519,16 +2606,21 @@ function renderDate(){
   const nav=document.getElementById('datenav'), wrap=document.getElementById('datematches');
   if(!nav||!wrap) return;
   const buckets={};
-  M.forEach(m=>{const mt=meta[m.idx]; if(!mt||!mt.date)return; const d=new Date(mt.date); const k=d.toLocaleDateString('en-CA'); (buckets[k]=buckets[k]||{d,items:[]}).items.push(m.idx);});
+  const addItem=(d,item)=>{
+    if(!d||Number.isNaN(d.getTime())) return;
+    const k=d.toLocaleDateString('en-CA');
+    (buckets[k]=buckets[k]||{d,items:[]}).items.push({...item,d});
+  };
+  M.forEach((m,mi)=>{const mt=meta[m.idx]; if(!mt||!mt.date)return; addItem(new Date(mt.date),{type:'group',m,mi});});
+  KO16.forEach((km,ki)=>{const d=ko16DateObj(km); if(d)addItem(d,{type:'ko16',km,ki});});
   const keys=Object.keys(buckets).sort();
-  if(!keys.length){ nav.innerHTML=''; wrap.innerHTML='<div class="koempty">Las fechas y estadios aparecen acá cuando corra el Action actualizado (subí de nuevo update_results.py). Mientras tanto, mirá los partidos en "Por grupo".</div>'; return; }
+  if(!keys.length){ nav.innerHTML=''; wrap.innerHTML='<div class="koempty">Las fechas aparecen acá cuando corra el Action actualizado. Para 16avos, la información viene desde /polla/ko en Firebase.</div>'; return; }
   const today=new Date().toLocaleDateString('en-CA');
   if(!selDate||!buckets[selDate]) selDate=keys.find(k=>k>=today)||keys[keys.length-1];
   nav.innerHTML=keys.map(k=>{const d=buckets[k].d,c=buckets[k].items.length;
     return `<button class="datechip${k===selDate?' on':''}" data-d="${k}"><div class="m">${DAYS[d.getDay()]}</div><div class="d">${d.getDate()}</div><div class="m">${MON[d.getMonth()]}</div><div class="c">${c} part.</div></button>`;}).join('');
-  const items=buckets[selDate].items.map(i=>MIDX[i]).filter(x=>x!=null)
-    .sort((a,b)=>String(meta[M[a].idx].date).localeCompare(String(meta[M[b].idx].date)));
-  wrap.innerHTML=`<div class="daygrid">${items.map(dmatchCard).join('')}</div>`;
+  const items=buckets[selDate].items.sort((a,b)=>a.d-b.d);
+  wrap.innerHTML=`<div class="daygrid">${items.map(it=>it.type==='ko16'?ko16DateCard(it.ki):dmatchCard(it.mi)).join('')}</div>`;
 }
 function openMatch(idx){
   document.querySelector('#modal .mcard').classList.remove('wide');
@@ -2666,7 +2758,7 @@ document.querySelector('.modetoggle').addEventListener('click',e=>{const b=e.tar
   if(viewMode==='fecha')renderDate();
 });
 document.getElementById('datenav').addEventListener('click',e=>{const b=e.target.closest('[data-d]');if(b){selDate=b.dataset.d;renderDate();}});
-document.getElementById('datematches').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(b)openMatch(+b.dataset.open);});
+document.getElementById('datematches').addEventListener('click',e=>{const k=e.target.closest('[data-ko16]');if(k){openKO16Match(+k.dataset.ko16);return;} const b=e.target.closest('[data-open]');if(b)openMatch(+b.dataset.open);});
 document.getElementById('gdetail').addEventListener('click',e=>{if(e.target.closest('input,button,select,textarea,label')) return; const b=e.target.closest('[data-open]');if(b){openMatch(+b.dataset.open);}});
 document.getElementById('teamchips').addEventListener('click',e=>{const b=e.target.closest('[data-team]');if(b){selTeam=b.dataset.team;renderTeamExplorer();}});
 document.getElementById('teampanel').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(b){openMatch(+b.dataset.open);}});
@@ -2675,7 +2767,7 @@ document.getElementById('realTeamChips').addEventListener('click',e=>{const b=e.
 document.getElementById('realTeamPanel').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(b){openMatch(+b.dataset.open);}});
 document.getElementById('liveNowContent').addEventListener('click',e=>{const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
 document.getElementById('viewReal').addEventListener('click',e=>{const b=e.target.closest('tr[data-real-team]');if(b){selRealGroup=b.dataset.realGroup;selRealTeam=b.dataset.realTeam;renderRealTeamExplorer();document.getElementById('realTeamExplorer').scrollIntoView({behavior:'smooth',block:'start'});}});
-document.getElementById('pollaInsights').addEventListener('click',e=>{const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
+document.getElementById('pollaInsights').addEventListener('click',e=>{const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
 document.getElementById('pollaInsights').addEventListener('change',e=>{if(e.target.id==='insightPlayerSel'){selInsightPlayer=+e.target.value;renderInsights();} if(e.target.id==='duelA'){selDuelA=+e.target.value;renderInsights();} if(e.target.id==='duelB'){selDuelB=+e.target.value;renderInsights();}});
 document.getElementById('mclose').addEventListener('click',closeMatch);
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeMatch();});
