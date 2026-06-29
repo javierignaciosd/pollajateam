@@ -1443,6 +1443,17 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
   color:var(--exact)!important;
 }
 
+
+/* ===== v7.23 live KO API directo ===== */
+.live-now .koapi-match.live-card,
+.live-now .dmatch.live-card{
+  border-color:rgba(43,227,139,.50)!important;
+}
+.live-now [data-koid],
+.live-now [data-ko16]{
+  cursor:pointer;
+}
+
 </style>
 </head>
 <body>
@@ -2337,6 +2348,32 @@ function matchLivePredRows(mi, limit=6){
   }).sort((a,b)=>b.pts-a.pts||CATORDER[a.cat]-CATORDER[b.cat]||a.nm.localeCompare(b.nm));
   return arr.slice(0,limit);
 }
+function koApiIsLive(rec){
+  if(!rec) return false;
+  const st=String(rec.status||rec.rawStatus||'').toUpperCase();
+  if(st==='FINISHED') return false;
+  if(rec.forcedLiveByTime) return true;
+  if(['IN_PLAY','PAUSED','LIVE','EXTRA_TIME','PENALTY_SHOOTOUT'].includes(st)) return true;
+  const d=rec.date?new Date(rec.date):null, now=new Date();
+  return !!(d && !Number.isNaN(d.getTime()) && d<=now && now<=new Date(d.getTime()+165*60000));
+}
+function koApiMatchToKO16Index(rec){
+  const key=venuePairKey(koTeamName(rec?.home),koTeamName(rec?.away));
+  return KO16.findIndex(km=>venuePairKey(km.home,km.away)===key);
+}
+function koApiLiveCardHTML(rec){
+  const ki=koApiMatchToKO16Index(rec);
+  if(ki>=0){
+    return ko16DateCard(ki).replace('class="dmatch ko16date"', 'class="dmatch ko16date live-card live-spotlight"');
+  }
+  return `<div class="dmatch ko16date live-card live-spotlight" data-koid="${escHtml(rec._id||rec.id||'')}">
+    <div class="dmtop"><span class="gp">${escHtml(koStageTitle(koStageOrder(rec)))}</span><span class="np">En juego</span></div>
+    ${koTeamApiRow(rec.home,koDisplayScore(rec,'h'),false)}
+    ${koTeamApiRow(rec.away,koDisplayScore(rec,'a'),false)}
+    <div class="dmven">${rec.date?new Date(rec.date).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}${rec.venue?` · 📍 ${escHtml(venueInfo(rec.venue))}`:''}</div>
+    <div class="ko90note">Cruce oficial detectado desde la API. No se encontró equivalente exacto en las predicciones 16avos del Forms.</div>
+  </div>`;
+}
 function ko16LiveNowCardHTML(ki){
   return ko16DateCard(ki).replace('class="dmatch ko16date"', 'class="dmatch ko16date live-card live-spotlight"');
 }
@@ -2350,9 +2387,14 @@ function renderLiveNow(){
   if(!sec||!wrap) return;
 
   const liveMatches=M.map((m,mi)=>({type:'group',m,mi})).filter(o=>isProvisionalMatch(o.m.idx));
-  const liveKo16=KO16.map((km,ki)=>({type:'ko16',km,ki})).filter(o=>isKO16Live(o.ki));
+  const liveKo16Hard=KO16.map((km,ki)=>({type:'ko16',km,ki})).filter(o=>isKO16Live(o.ki));
+  const liveKoApi=koApiEntries().filter(koApiIsLive);
 
-  if(!liveMatches.length && !liveKo16.length){
+  // Evita duplicar: si un cruce API ya coincide con un KO16 hardcodeado, usamos la tarjeta con predicciones.
+  const hardKeys=new Set(liveKo16Hard.map(({km})=>venuePairKey(km.home,km.away)));
+  const apiOnly=liveKoApi.filter(rec=>!hardKeys.has(venuePairKey(koTeamName(rec.home),koTeamName(rec.away))));
+
+  if(!liveMatches.length && !liveKo16Hard.length && !apiOnly.length){
     sec.classList.add('hide');
     wrap.innerHTML='';
     return;
@@ -2361,7 +2403,8 @@ function renderLiveNow(){
   sec.classList.remove('hide');
   wrap.innerHTML=[
     ...liveMatches.map(({m,mi})=>matchCardHTML(m,mi,{spotlight:true})),
-    ...liveKo16.map(({ki})=>ko16LiveNowCardHTML(ki))
+    ...liveKo16Hard.map(({ki})=>ko16LiveNowCardHTML(ki)),
+    ...apiOnly.map(koApiLiveCardHTML)
   ].join('');
 }
 
@@ -2477,10 +2520,15 @@ function koStageTitle(order){
   return ({1:'16vos',2:'8vos',3:'4tos',4:'Semifinal',5:'3er puesto',6:'Final'})[order] || 'Eliminatoria';
 }
 function koStatusText(m){
-  const st=String(m.status||'').toUpperCase();
+  const st=String(m.status||m.rawStatus||'').toUpperCase();
   if(st==='FINISHED') return 'Finalizado';
-  if(st==='IN_PLAY'||st==='PAUSED'||st==='LIVE') return LIVE_STATUS_LABEL[st]||'En juego';
-  return m.date?new Date(m.date).toLocaleString('es-CL',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Por definir';
+  if(m.forcedLiveByTime || st==='IN_PLAY'||st==='PAUSED'||st==='LIVE'||st==='EXTRA_TIME'||st==='PENALTY_SHOOTOUT') return LIVE_STATUS_LABEL[st]||'En juego';
+  if(m.date){
+    const d=new Date(m.date), now=new Date();
+    if(d && !Number.isNaN(d.getTime()) && d<=now && now<=new Date(d.getTime()+165*60000)) return 'En juego';
+    return d.toLocaleString('es-CL',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  }
+  return 'Por definir';
 }
 function koOfficialScore(m,side){
   return side==='h'
@@ -2631,6 +2679,14 @@ function openKO16Match(ki){
   const r=koScoreForMatch(m), done=hasBasicScore(r), vinfo=ko16VenueText(m), status=ko16StatusText(ki);
   const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Resultado oficial: ${r.officialL}-${r.officialV}. Para la polla cuenta ${r.l}-${r.v} a los 90'.</div>`:'';
   const h=`<div class="mhd"><div class="mt2">${flag(m.hiso,m.hf,80)}<span>${escHtml(m.home)}</span></div><div class="mvs">${done?`${r.l}-${r.v}`:'vs'}<small>${escHtml(status)} · válido 90'</small></div><div class="mt2">${flag(m.aiso,m.af,80)}<span>${escHtml(m.away)}</span></div></div><div class="minfo"><b>${ko16DateText(m)}</b>${vinfo?`<br>📍 ${escHtml(vinfo)}`:''}<br><b style="color:var(--gold)">Regla:</b> cuenta solo el marcador al final del segundo tiempo. Alargue y penales no modifican puntaje.</div>${official}<div class="ko16preds">${ko16PredRowsHTML(ki,r)}</div>`;
+  document.getElementById('mbody').innerHTML=h;
+  document.getElementById('modal').classList.add('on');
+}
+function openKoApiMatch(id){
+  const rec=koApiEntries().find(x=>String(x._id||x.id||'')===String(id));
+  if(!rec) return;
+  document.querySelector('#modal .mcard').classList.add('wide');
+  const h=`<div class="msub">Partido oficial API</div>${koApiMatchCard(rec)}<div class="mnote"><b>Nota:</b> este partido viene directo desde football-data.org. Si no aparecen predicciones, el cruce no logró empatar exactamente con las respuestas de 16avos del Forms.</div>`;
   document.getElementById('mbody').innerHTML=h;
   document.getElementById('modal').classList.add('on');
 }
@@ -2849,7 +2905,7 @@ document.getElementById('teampanel').addEventListener('click',e=>{const b=e.targ
 document.getElementById('realGroupChips').addEventListener('click',e=>{const b=e.target.closest('[data-real-group]');if(b){selRealGroup=b.dataset.realGroup;selRealTeam=null;renderRealTeamExplorer();}});
 document.getElementById('realTeamChips').addEventListener('click',e=>{const b=e.target.closest('[data-real-team-chip]');if(b){selRealTeam=b.dataset.realTeamChip;renderRealTeamExplorer();}});
 document.getElementById('realTeamPanel').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(b){openMatch(+b.dataset.open);}});
-document.getElementById('liveNowContent').addEventListener('click',e=>{const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
+document.getElementById('liveNowContent').addEventListener('click',e=>{const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const koid=e.target.closest('[data-koid]');if(koid){openKoApiMatch(koid.dataset.koid);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
 document.getElementById('viewReal').addEventListener('click',e=>{const b=e.target.closest('tr[data-real-team]');if(b){selRealGroup=b.dataset.realGroup;selRealTeam=b.dataset.realTeam;renderRealTeamExplorer();document.getElementById('realTeamExplorer').scrollIntoView({behavior:'smooth',block:'start'});}});
 document.getElementById('pollaInsights').addEventListener('click',e=>{const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
 document.getElementById('pollaInsights').addEventListener('change',e=>{if(e.target.id==='insightPlayerSel'){selInsightPlayer=+e.target.value;renderInsights();} if(e.target.id==='duelA'){selDuelA=+e.target.value;renderInsights();} if(e.target.id==='duelB'){selDuelB=+e.target.value;renderInsights();}});
