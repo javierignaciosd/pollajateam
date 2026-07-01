@@ -147,6 +147,29 @@ STAGE = {  # stage de la API -> (etiqueta, orden)
  "THIRD_PLACE":("3er puesto",5),"3RD_PLACE":("3er puesto",5),
  "FINAL":("Final",6),
 }
+
+# Overrides manuales de marcador al término del segundo tiempo cuando la API no entrega regularTime
+# o cuando ya sabemos el marcador correcto 90' + descuentos.
+# Formato: par canonico -> goles por equipo canonico.
+KO_90_OVERRIDES = {
+    frozenset(("belgica", "senegal")): {"belgica": 2, "senegal": 2, "source": "manual_belgica_senegal_90_descuentos"},
+}
+
+def manual_ko_90_override(m):
+    ht=m.get("homeTeam",{}) or {}
+    at=m.get("awayTeam",{}) or {}
+    ch=canon(ht.get("name"), ht.get("shortName"), ht.get("tla"))
+    ca=canon(at.get("name"), at.get("shortName"), at.get("tla"))
+    if not ch or not ca:
+        return None
+    ov=KO_90_OVERRIDES.get(frozenset((ch, ca)))
+    if not ov:
+        return None
+    h=ov.get(ch)
+    a=ov.get(ca)
+    if h is None or a is None:
+        return None
+    return int(h), int(a), ov.get("source", "manual_override")
 def team_obj(tm):
     """{name,iso,flag} a partir de un equipo de la API (o placeholder)."""
     if not tm: return {"name":"Por definir","iso":"","flag":""}
@@ -191,30 +214,69 @@ def score_goals(m):
 def score_regular_90(m):
     """Resultado válido para la polla en eliminatorias: final del segundo tiempo.
 
-    Regla:
-      - Si terminó en 90 minutos, usa fullTime.
-      - Si hubo alargue o penales, usa regularTime cuando la API lo entregue.
-      - extraTime y penalties se guardan solo como referencia; no cuentan para puntaje.
+    Regla real:
+      - Cuenta hasta el término del segundo tiempo: 90' + descuentos.
+      - Alargue y penales NO cuentan para puntos.
+      - Si hay regularTime, se usa regularTime.
+      - Si no hay regularTime y hay override manual, se usa el override.
+      - Si no hay regularTime ni override, pero extraTime viene como goles del alargue,
+        se infiere: marcador_90 = fullTime - extraTime.
+      - Si no se puede saber el marcador a los 90' + descuentos, no se cierra puntaje
+        para evitar entregar puntos con el resultado de alargue.
     """
     sc=(m.get("score") or {})
     ft=sc.get("fullTime") or {}
     rt=sc.get("regularTime") or {}
+    et=sc.get("extraTime") or {}
     dur=str(sc.get("duration") or "").upper()
 
-    # football-data.org v4 usa regularTime para el marcador tras 90' cuando hay ET/penales.
+    # 1) Fuente ideal: regularTime, que football-data v4 define como marcador tras 90'.
     h=rt.get("home")
     a=rt.get("away")
-    used="regularTime"
+    if h is not None and a is not None:
+        return int(h), int(a), "regularTime", True
 
-    if h is None or a is None:
-        h=ft.get("home")
-        a=ft.get("away")
-        used="fullTime"
+    # 2) Override manual conocido, útil cuando la API no entrega regularTime.
+    ov=manual_ko_90_override(m)
+    if ov:
+        h,a,src=ov
+        return h, a, src, True
 
-    if h is None or a is None:
-        return None, None, used, False
+    # 3) Si hubo alargue/penales y extraTime es DELTA de goles en alargue, inferir.
+    fh=ft.get("home"); fa=ft.get("away")
+    eh=et.get("home"); ea=et.get("away")
+    overtime_like = ("EXTRA" in dur) or ("PENAL" in dur) or eh is not None or ea is not None
+    if overtime_like:
+        if fh is not None and fa is not None and eh is not None and ea is not None:
+            try:
+                fh,fa,eh,ea = int(fh), int(fa), int(eh), int(ea)
+                # Solo inferir si extraTime parece goles DEL alargue, no marcador acumulado.
+                if 0 <= eh <= fh and 0 <= ea <= fa and (eh < fh or ea < fa):
+                    return fh-eh, fa-ea, "fullTime_minus_extraTime", False
+            except Exception:
+                pass
+        # Si hubo alargue/penales y no tengo 90', no uso fullTime: sería incorrecto.
+        return None, None, "missing_regularTime", False
 
-    return int(h), int(a), used, bool(rt.get("home") is not None and rt.get("away") is not None)
+    # 4) Partido resuelto dentro del segundo tiempo: fullTime es válido al estar FINISHED.
+    if fh is None or fa is None:
+        return None, None, "fullTime", False
+    return int(fh), int(fa), "fullTime", False
+
+def should_close_ko_polla(m):
+    """True solo cuando ya corresponde asignar puntos de KO."""
+    raw = str(m.get("status") or "").upper()
+    sc = (m.get("score") or {})
+    rt = sc.get("regularTime") or {}
+    has_regular = rt.get("home") is not None and rt.get("away") is not None
+
+    if raw in ("EXTRA_TIME", "PENALTY_SHOOTOUT") and (has_regular or manual_ko_90_override(m)):
+        return True
+
+    if raw == "FINISHED":
+        return True
+
+    return False
 
 def parse_utc(dt):
     if not dt:
@@ -303,27 +365,54 @@ def main():
     print(f"Meta (fecha/estadio) escritas: {meta}")
     # --- ELIMINATORIAS -> polla/ko ---
     ko=0
+    ko_live_active=0
+    ko_polla_closed=0
     for m in ms:
         st=(m.get("stage") or "").upper()
         if not st or "GROUP" in st: continue
         lab,order=STAGE.get(st,(st.replace("_"," ").title(),9))
         sc=(m.get("score") or {}); ft=sc.get("fullTime") or {}; rt=sc.get("regularTime") or {}; et=sc.get("extraTime") or {}; pen=sc.get("penalties") or {}
-        p90h,p90a,score_used,regular_available=score_regular_90(m)
+
+        st_eff, forced = effective_status(m)
+        live_h, live_a = score_goals(m)
+        close_polla = should_close_ko_polla(m)
+
+        p90h=p90a=score_used=None
+        regular_available=False
+        if close_polla:
+            p90h,p90a,score_used,regular_available=score_regular_90(m)
+            if p90h is not None and p90a is not None:
+                ko_polla_closed += 1
+
+        if st_eff in ("IN_PLAY","PAUSED","LIVE","EXTRA_TIME","PENALTY_SHOOTOUT"):
+            ko_live_active += 1
+
+        official_h = ft.get("home") if str(m.get("status") or "").upper()=="FINISHED" else None
+        official_a = ft.get("away") if str(m.get("status") or "").upper()=="FINISHED" else None
+
         rec={
-          "id":m.get("id"),"stage":lab,"stageRaw":st,"order":order,"date":m.get("utcDate"),"status":m.get("status"),
+          "id":m.get("id"),"stage":lab,"stageRaw":st,"order":order,"date":m.get("utcDate"),
+          "status":st_eff,"rawStatus":m.get("status"),"forcedLiveByTime":forced,
           "venue":m.get("venue"),
           "home":team_obj(m.get("homeTeam")),"away":team_obj(m.get("awayTeam")),
-          # hg/ag quedan como resultado valido para la polla (90' + descuentos)
+
+          # Marcador vivo/provisional. Sirve solo para mostrar, NO para puntuar.
+          "liveHg":live_h,"liveAg":live_a,
+
+          # hg/ag y pollaHg/pollaAg se escriben solo cuando terminó el segundo tiempo.
+          # Es decir: FINISHED en tiempo regular, o regularTime disponible al pasar a alargue/penales.
           "hg":p90h,"ag":p90a,
           "pollaHg":p90h,"pollaAg":p90a,
+          "pollaClosed": bool(p90h is not None and p90a is not None),
           "scoreUsedForPolla":score_used,
           "regularTimeAvailable":regular_available,
-          "rule":"90min_final_segundo_tiempo",
-          # Resultado oficial completo y referencias de alargue/penales
-          "officialHg":ft.get("home"),"officialAg":ft.get("away"),
+          "rule":"90min_mas_descuentos_final_segundo_tiempo",
+
+          "officialHg":official_h,"officialAg":official_a,
           "regularHg":rt.get("home"),"regularAg":rt.get("away"),
           "extraHg":et.get("home"),"extraAg":et.get("away"),
           "ph":pen.get("home"),"pa":pen.get("away"),"winner":sc.get("winner"),"duration":sc.get("duration"),
+          "updatedAt": datetime.now(timezone.utc).isoformat(),
         }
         fb_put(f"polla/ko/{m.get('id')}", rec)
         ko+=1
@@ -338,6 +427,8 @@ def main():
         "liveMatchesActive": live_active,
         "forcedLiveByTime": forced_live_by_time,
         "knockoutWritten": ko,
+        "knockoutLiveActive": ko_live_active,
+        "knockoutPollaClosed": ko_polla_closed,
         "unmatchedFinished": unmatched,
     })
     print(f"Eliminatorias escritas: {ko}")

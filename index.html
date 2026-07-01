@@ -1454,6 +1454,14 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
   cursor:pointer;
 }
 
+
+/* ===== v7.24: KO vivo muestra marcador provisional, pero no puntúa hasta cierre 90' + descuentos ===== */
+.dmsc.live{
+  color:var(--exact)!important;
+  border-color:rgba(43,227,139,.45)!important;
+  background:rgba(43,227,139,.10)!important;
+}
+
 </style>
 </head>
 <body>
@@ -1878,15 +1886,37 @@ function koOfficialRecord(km){
   });
   return hit || null;
 }
+function koIsOvertimeRecord(rec){
+  const txt=String(rec?.duration||rec?.status||rec?.rawStatus||'').toUpperCase();
+  return txt.includes('EXTRA') || txt.includes('PENAL') || rec?.extraHg!=null || rec?.extraAg!=null || rec?.ph!=null || rec?.pa!=null;
+}
+function koManual90Value(rec,side){
+  const h=normTeamName(koTeamName(rec?.home)), a=normTeamName(koTeamName(rec?.away));
+  const pair=[h,a].sort().join('||');
+  if(pair==='belgica||senegal') return 2;
+  return null;
+}
+function koPollaValue(rec,side){
+  const manual=koManual90Value(rec,side);
+  if(manual!=null) return manual;
+  if(koIsOvertimeRecord(rec)){
+    return side==='h'
+      ? firstNum(rec.regularHg,rec.regularHome,rec.regularTime?.home,rec.hg90,rec.pollaHg,rec.hg)
+      : firstNum(rec.regularAg,rec.regularAway,rec.regularTime?.away,rec.ag90,rec.pollaAg,rec.ag);
+  }
+  return side==='h'
+    ? firstNum(rec.pollaHg,rec.hg90,rec.hg,rec.regularHg,rec.regularHome,rec.regularTime?.home)
+    : firstNum(rec.pollaAg,rec.ag90,rec.ag,rec.regularAg,rec.regularAway,rec.regularTime?.away);
+}
 function koScoreForMatch(km){
   const rec=koOfficialRecord(km);
   if(!rec) return {};
   const apiHome=koTeamName(rec.home), apiAway=koTeamName(rec.away);
   const apiHomeIsKmHome=normTeamName(apiHome)===normTeamName(km.home);
-  const h90=firstNum(rec.pollaHg,rec.hg90,rec.regularHg,rec.regularHome,rec.regularTime?.home,rec.hg);
-  const a90=firstNum(rec.pollaAg,rec.ag90,rec.regularAg,rec.regularAway,rec.regularTime?.away,rec.ag);
-  const oh=firstNum(rec.officialHg,rec.fullTimeHome,rec.hg);
-  const oa=firstNum(rec.officialAg,rec.fullTimeAway,rec.ag);
+  const h90=koPollaValue(rec,'h');
+  const a90=koPollaValue(rec,'a');
+  const oh=firstNum(rec.officialHg,rec.fullTimeHome,rec.officialHome,rec.finalHg,rec.liveHg);
+  const oa=firstNum(rec.officialAg,rec.fullTimeAway,rec.officialAway,rec.finalAg,rec.liveAg);
   if(h90==null||a90==null) return {};
   return {
     l: apiHomeIsKmHome ? h90 : a90,
@@ -1896,6 +1926,16 @@ function koScoreForMatch(km){
     duration: rec.duration || '',
     source: rec
   };
+}
+function koLiveScoreForMatch(km){
+  const rec=koOfficialRecord(km);
+  if(!rec) return {};
+  const apiHome=koTeamName(rec.home), apiAway=koTeamName(rec.away);
+  const apiHomeIsKmHome=normTeamName(apiHome)===normTeamName(km.home);
+  const lh=firstNum(rec.liveHg,rec.currentHg,rec.liveHome,rec.currentHome);
+  const la=firstNum(rec.liveAg,rec.currentAg,rec.liveAway,rec.currentAway);
+  if(lh==null||la==null) return {};
+  return {l: apiHomeIsKmHome ? lh : la, v: apiHomeIsKmHome ? la : lh, source: rec};
 }
 function koIsPlayed(km){return hasBasicScore(koScoreForMatch(km));}
 function doneCount(){
@@ -2532,19 +2572,24 @@ function koStatusText(m){
 }
 function koOfficialScore(m,side){
   return side==='h'
-    ? firstNum(m.officialHg,m.fullTimeHome,m.hg)
-    : firstNum(m.officialAg,m.fullTimeAway,m.ag);
+    ? firstNum(m.officialHg,m.fullTimeHome,m.officialHome,m.finalHg,m.liveHg)
+    : firstNum(m.officialAg,m.fullTimeAway,m.officialAway,m.finalAg,m.liveAg);
 }
 function koPollaScore(m,side){
+  return koPollaValue(m,side);
+}
+function koLiveDisplayScore(m,side){
   return side==='h'
-    ? firstNum(m.pollaHg,m.hg90,m.regularHg,m.regularHome,m.regularTime?.home,m.hg)
-    : firstNum(m.pollaAg,m.ag90,m.regularAg,m.regularAway,m.regularTime?.away,m.ag);
+    ? firstNum(m.liveHg,m.currentHg,m.liveHome,m.currentHome)
+    : firstNum(m.liveAg,m.currentAg,m.liveAway,m.currentAway);
 }
 function koDisplayScore(m,side){
-  const st=String(m.status||'').toUpperCase();
-  const s=koOfficialScore(m,side);
-  if(s!=null) return s;
-  if(st==='IN_PLAY'||st==='PAUSED'||st==='LIVE') return '•';
+  const st=String(m.status||m.rawStatus||'').toUpperCase();
+  const official=koOfficialScore(m,side);
+  if(official!=null) return official;
+  const live=koLiveDisplayScore(m,side);
+  if(live!=null) return live;
+  if(st==='IN_PLAY'||st==='PAUSED'||st==='LIVE'||st==='EXTRA_TIME'||st==='PENALTY_SHOOTOUT'||m.forcedLiveByTime) return '•';
   return '';
 }
 function koWinnerSide(m){
@@ -2569,7 +2614,7 @@ function koApiMatchCard(m){
   const p90h=koPollaScore(m,'h'), p90a=koPollaScore(m,'a');
   const oh=koOfficialScore(m,'h'), oa=koOfficialScore(m,'a');
   const show90=(p90h!=null&&p90a!=null&&(oh!==p90h||oa!==p90a||String(m.duration||'').toUpperCase().includes('EXTRA')||String(m.duration||'').toUpperCase().includes('PENAL')));
-  const note90=show90?`<div class="koapi-note">Polla 90': <b>${p90h}-${p90a}</b> · Alargue/penales no cuentan</div>`:'';
+  const note90=show90?`<div class="koapi-note">Resultado válido polla: <b>${p90h}-${p90a}</b> · Alargue/penales no cuentan</div>`:'';
   const vinfo=venueInfo(m.venue);
   return `<div class="koapi-match ${fin?'done':''}" data-koid="${escHtml(m._id||'')}">
     <div class="koapi-mid"><span>${koStageTitle(order)}</span><small>${koStatusText(m)}</small></div>
@@ -2587,7 +2632,7 @@ function actualKoBracketHTML(){
     if(!items.length) return '';
     return `<div class="koapi-col ${order===6?'final':''}"><h3>${koStageTitle(order)}</h3>${items.map(koApiMatchCard).join('')}</div>`;
   }).filter(Boolean).join('');
-  return `<div class="bnote"><b>Llave oficial:</b> estos cruces vienen desde football-data.org. Para la puntuación de la polla, en eliminatorias cuenta solo el resultado al final del segundo tiempo (90' + descuentos).</div>
+  return `<div class="bnote"><b>Llave oficial:</b> estos cruces vienen desde football-data.org. Para la puntuación de la polla, en eliminatorias cuenta el resultado al final del segundo tiempo (90' + descuentos).</div>
     <div class="koapi-scroll"><div class="koapi-bracket">${stages}</div></div>`;
 }
 function projectedKoBracketHTML(){
@@ -2660,25 +2705,30 @@ function ko16PredRowsHTML(ki,r){
   return (KO16_PR[ki]||[]).map((pr,pi)=>{const c=hasBasicScore(r)?category(pr.l,pr.v,r):'pend', pts=catPts(c); return `<div class="kopred" data-c="${c}"><div><b>${escHtml(P[pi])}</b><small>"${escHtml(pr.raw)}"${pr.winner?` · ganador: ${escHtml(pr.winner)}`:''}</small></div><div class="kopnums"><span>${pr.l}-${pr.v}</span><em class="badge ${c}">${CATLABEL[c]}</em><strong>${c==='pend'?'—':`+${pts}`}</strong></div></div>`;}).join('');
 }
 function ko16DateCard(ki){
-  const m=KO16[ki], r=koScoreForMatch(m), done=hasBasicScore(r), vinfo=ko16VenueText(m), status=ko16StatusText(ki);
-  const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Oficial: ${r.officialL}-${r.officialV} · Para la polla cuenta 90'</div>`:'';
+  const m=KO16[ki], r=koScoreForMatch(m), live=koLiveScoreForMatch(m), done=hasBasicScore(r), liveOn=ko16StatusText(ki)==='En juego', vinfo=ko16VenueText(m), status=ko16StatusText(ki);
+  const shown=done?r:(liveOn&&hasBasicScore(live)?live:null);
+  const scoreTxt=shown?`${shown.l} - ${shown.v}`:ko16DateText(m,'short');
+  const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Oficial: ${r.officialL}-${r.officialV} · Para la polla cuenta el marcador al cierre del 2° tiempo</div>`:'';
+  const liveNote=(!done&&liveOn)?`<div class="ko90note">Marcador provisional. Los puntos se cierran al final del segundo tiempo, incluyendo descuentos.</div>`:'';
   return `<div class="dmatch ko16date" data-ko16="${ki}">
     <div class="dmtop"><span class="gp">16avos</span><span>${escHtml(m.id)}</span><span class="np">${escHtml(status)}</span></div>
     <div class="dmrow">
       <div class="dmt">${flag(m.hiso,m.hf,40)}<span class="nm">${escHtml(m.home)}</span></div>
-      <div class="dmsc${done?'':' pend'}">${done?`${r.l} - ${r.v}`:ko16DateText(m,'short')}</div>
+      <div class="dmsc${done?'':(liveOn?' live':' pend')}">${scoreTxt}</div>
       <div class="dmt aw"><span class="nm">${escHtml(m.away)}</span>${flag(m.aiso,m.af,40)}</div>
     </div>
-    ${vinfo?`<div class="dmven">📍 ${escHtml(vinfo)}</div>`:''}${official}
+    ${vinfo?`<div class="dmven">📍 ${escHtml(vinfo)}</div>`:''}${official}${liveNote}
     <div class="ko16preds">${ko16PredRowsHTML(ki,r)}</div>
   </div>`;
 }
 function openKO16Match(ki){
   const m=KO16[ki]; if(!m)return;
   document.querySelector('#modal .mcard').classList.add('wide');
-  const r=koScoreForMatch(m), done=hasBasicScore(r), vinfo=ko16VenueText(m), status=ko16StatusText(ki);
-  const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Resultado oficial: ${r.officialL}-${r.officialV}. Para la polla cuenta ${r.l}-${r.v} a los 90'.</div>`:'';
-  const h=`<div class="mhd"><div class="mt2">${flag(m.hiso,m.hf,80)}<span>${escHtml(m.home)}</span></div><div class="mvs">${done?`${r.l}-${r.v}`:'vs'}<small>${escHtml(status)} · válido 90'</small></div><div class="mt2">${flag(m.aiso,m.af,80)}<span>${escHtml(m.away)}</span></div></div><div class="minfo"><b>${ko16DateText(m)}</b>${vinfo?`<br>📍 ${escHtml(vinfo)}`:''}<br><b style="color:var(--gold)">Regla:</b> cuenta solo el marcador al final del segundo tiempo. Alargue y penales no modifican puntaje.</div>${official}<div class="ko16preds">${ko16PredRowsHTML(ki,r)}</div>`;
+  const r=koScoreForMatch(m), live=koLiveScoreForMatch(m), done=hasBasicScore(r), liveOn=ko16StatusText(ki)==='En juego', vinfo=ko16VenueText(m), status=ko16StatusText(ki);
+  const shown=done?r:(liveOn&&hasBasicScore(live)?live:null);
+  const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Resultado oficial: ${r.officialL}-${r.officialV}. Para la polla cuenta ${r.l}-${r.v} al cierre del segundo tiempo.</div>`:'';
+  const liveNote=(!done&&liveOn)?`<div class="ko90note">Marcador provisional: todavía no suma puntos. Se cerrará cuando termine el segundo tiempo, incluyendo descuentos.</div>`:'';
+  const h=`<div class="mhd"><div class="mt2">${flag(m.hiso,m.hf,80)}<span>${escHtml(m.home)}</span></div><div class="mvs">${shown?`${shown.l}-${shown.v}`:'vs'}<small>${escHtml(status)} · 90' + descuentos</small></div><div class="mt2">${flag(m.aiso,m.af,80)}<span>${escHtml(m.away)}</span></div></div><div class="minfo"><b>${ko16DateText(m)}</b>${vinfo?`<br>📍 ${escHtml(vinfo)}`:''}<br><b style="color:var(--gold)">Regla:</b> cuenta el marcador al final del segundo tiempo, es decir 90' + descuentos. Alargue y penales no modifican puntaje.</div>${official}${liveNote}<div class="ko16preds">${ko16PredRowsHTML(ki,r)}</div>`;
   document.getElementById('mbody').innerHTML=h;
   document.getElementById('modal').classList.add('on');
 }
@@ -2706,7 +2756,7 @@ function nextPollaItemsWindow(){
 function radarPollaItemHTML(item){
   if(item.type==='ko16'){
     const m=item.km, v=ko16VenueText(m);
-    return `<div class="irow radar-row" data-ko16="${item.ki}" title="Abrir detalle del partido"><span><span class="radar-flags">${flag(m.hiso,m.hf,40)}<b>vs</b>${flag(m.aiso,m.af,40)}</span><div class="mut">${ko16DateText(m,'short')} · 16avos · válido 90'${v?` · ${escHtml(v)}`:''}</div></span><span class="val warn">Abrir</span></div>`;
+    return `<div class="irow radar-row" data-ko16="${item.ki}" title="Abrir detalle del partido"><span><span class="radar-flags">${flag(m.hiso,m.hf,40)}<b>vs</b>${flag(m.aiso,m.af,40)}</span><div class="mut">${ko16DateText(m,'short')} · 16avos · válido 90' + descuentos${v?` · ${escHtml(v)}`:''}</div></span><span class="val warn">Abrir</span></div>`;
   }
   const m=item.m, v=matchVenueInfo(m);
   return radarMatchHTML(m,`${matchDateText(m,'short')} · Grupo ${m.group}${v?` · ${escHtml(v)}`:''}`,'Abrir','warn');
@@ -2718,7 +2768,7 @@ function ko16CardsHTML(){
     const real=hasBasicScore(r)?`${r.l}-${r.v}`:'Pendiente';
     const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Oficial: ${r.officialL}-${r.officialV} · Para la polla cuenta 90'</div>`:'';
     const rows=(KO16_PR[ki]||[]).map((pr,pi)=>{const c=category(pr.l,pr.v,r), pts=catPts(c); return `<div class="kopred" data-c="${c}"><div><b>${escHtml(P[pi])}</b><small>"${escHtml(pr.raw)}"${pr.winner?` · ganador: ${escHtml(pr.winner)}`:''}</small></div><div class="kopnums"><span>${pr.l}-${pr.v}</span><em class="badge ${c}">${CATLABEL[c]}</em><strong>${c==='pend'?'—':`+${pts}`}</strong></div></div>`;}).join('');
-    return `<article class="ko16card"><div class="ko16top"><span>${escHtml(m.id)}</span><b>16avos · válido 90'</b><i>${real}</i></div><div class="ko16teams"><div>${flag(m.hiso,m.hf,50)}<b>${escHtml(m.home)}</b></div><span>vs</span><div><b>${escHtml(m.away)}</b>${flag(m.aiso,m.af,50)}</div></div>${official}<div class="ko16preds">${rows}</div></article>`;
+    return `<article class="ko16card"><div class="ko16top"><span>${escHtml(m.id)}</span><b>16avos · válido 90' + descuentos</b><i>${real}</i></div><div class="ko16teams"><div>${flag(m.hiso,m.hf,50)}<b>${escHtml(m.home)}</b></div><span>vs</span><div><b>${escHtml(m.away)}</b>${flag(m.aiso,m.af,50)}</div></div>${official}<div class="ko16preds">${rows}</div></article>`;
   }).join('');
   return `<div class="ko16wrap"><div class="section-h"><h2>Polla 16avos · resultado al final del segundo tiempo</h2><div class="ln"></div></div><div class="bnote"><b>Regla:</b> los puntos se asignan solo con el marcador al término del segundo tiempo (90' + descuentos). Alargue y penales no modifican el puntaje de la polla.</div><div class="ko16grid">${cards}</div></div>`;
 }
