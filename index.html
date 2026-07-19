@@ -1498,6 +1498,12 @@ footer{text-align:center;color:var(--mut2);font-size:11.5px;font-weight:500;marg
   display:none!important;
 }
 
+
+/* ===== v7.31: 3ro y 4to / Final ===== */
+.ko-filter-tabs .kotab[data-kophase="finales"]{
+  border-color:rgba(255,214,90,.28);
+}
+
 </style>
 </head>
 <body>
@@ -1662,6 +1668,9 @@ const KO4=[{"idx": "KO4_01", "id": "4-01", "round": "4tos", "home": "Francia", "
 const KO4_PR=[[{"l": 3, "v": 1, "raw": "3-1 Francia", "winner": "Francia", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 1, "raw": "2-1 Francia", "winner": "Francia", "rule": "90min_mas_descuentos"}, {"l": "—", "v": "—", "raw": "Sin respuesta", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 3, "v": 2, "raw": "3 - 2 Francia", "winner": "Francia", "rule": "90min_mas_descuentos"}, {"l": 3, "v": 0, "raw": "3-0 francia", "winner": "Francia", "rule": "90min_mas_descuentos"}], [{"l": 1, "v": 1, "raw": "1-1", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 1, "raw": "2-1 España", "winner": "España", "rule": "90min_mas_descuentos"}, {"l": "—", "v": "—", "raw": "Sin respuesta", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 0, "raw": "2 - 0 España", "winner": "España", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 1, "raw": "2-1 españa", "winner": "España", "rule": "90min_mas_descuentos"}], [{"l": 2, "v": 2, "raw": "2-2", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 1, "raw": "2-1 Noruega", "winner": "Noruega", "rule": "90min_mas_descuentos"}, {"l": "—", "v": "—", "raw": "Sin respuesta", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 2, "raw": "2 - 2", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 0, "raw": "2-0 noruega", "winner": "Noruega", "rule": "90min_mas_descuentos"}], [{"l": 2, "v": 0, "raw": "2-0", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 0, "raw": "2-0 Argentina", "winner": "Argentina", "rule": "90min_mas_descuentos"}, {"l": "—", "v": "—", "raw": "Sin respuesta", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 3, "v": 1, "raw": "3 - 1 Argentina", "winner": "Argentina", "rule": "90min_mas_descuentos"}, {"l": 3, "v": 0, "raw": "3-0 Argentina", "winner": "Argentina", "rule": "90min_mas_descuentos"}]];
 const KOSF=[{"idx": "KOSF_01", "id": "SF-01", "round": "semifinales", "home": "Francia", "away": "España", "hf": "🇫🇷", "af": "🇪🇸", "hiso": "fr", "aiso": "es"}, {"idx": "KOSF_02", "id": "SF-02", "round": "semifinales", "home": "Inglaterra", "away": "Argentina", "hf": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "af": "🇦🇷", "hiso": "gb-eng", "aiso": "ar"}];
 const KOSF_PR=[[{"l": 2, "v": 1, "raw": "2-1 Francia", "winner": "Francia", "rule": "90min_mas_descuentos"}, {"l": 3, "v": 1, "raw": "3-1 Francia", "winner": "Francia", "rule": "90min_mas_descuentos"}, {"l": "—", "v": "—", "raw": "Sin respuesta", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 2, "raw": "2-2", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 3, "v": 1, "raw": "3-1", "winner": "", "rule": "90min_mas_descuentos"}], [{"l": 1, "v": 0, "raw": "1-0 Inglaterra", "winner": "Inglaterra", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 1, "raw": "2-1 Inglaterra", "winner": "Inglaterra", "rule": "90min_mas_descuentos"}, {"l": "—", "v": "—", "raw": "Sin respuesta", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 3, "raw": "2-3", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 1, "v": 2, "raw": "1-2", "winner": "", "rule": "90min_mas_descuentos"}]];
+const KOFIN=[{"idx": "KOFIN_01", "id": "3P-01", "round": "3ro_y_4to", "kind": "third", "label": "3ro y 4to", "home": "Francia", "away": "Inglaterra", "hf": "🇫🇷", "af": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "hiso": "fr", "aiso": "gb-eng"}, {"idx": "KOFIN_02", "id": "F-01", "round": "final", "kind": "final", "label": "Final", "home": "España", "away": "Argentina", "hf": "🇪🇸", "af": "🇦🇷", "hiso": "es", "aiso": "ar"}];
+const KOFIN_PR=[[{"l": 2, "v": 1, "raw": "2-1 Francia", "winner": "Francia", "rule": "90min_mas_descuentos"}, {"l": 3, "v": 1, "raw": "3-1 Francia", "winner": "Francia", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 1, "raw": "2-1", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 1, "raw": "2 - 1", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 4, "v": 6, "raw": "4-6", "winner": "", "rule": "90min_mas_descuentos"}], [{"l": 2, "v": 2, "raw": "2-2", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 3, "v": 2, "raw": "3-2 España", "winner": "España", "rule": "90min_mas_descuentos"}, {"l": 18, "v": 1, "raw": "18-1", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 3, "raw": "2 - 3", "winner": "", "rule": "90min_mas_descuentos"}, {"l": 2, "v": 2, "raw": "2-2", "winner": "", "rule": "90min_mas_descuentos"}]];
+
 
 
 const LS='pollaJA26_v1';
@@ -1984,10 +1993,10 @@ function koLiveScoreForMatch(km){
 function koIsPlayed(km){return hasBasicScore(koScoreForMatch(km));}
 function doneCount(){
   const groupDone=M.filter(m=>hasBasicScore(scoreForMatch(m.idx))).length;
-  const koDone=KO16.filter(koIsPlayed).length + KO8.filter(koIsPlayed).length + KO4.filter(koIsPlayed).length + KOSF.filter(koIsPlayed).length;
+  const koDone=KO16.filter(koIsPlayed).length + KO8.filter(koIsPlayed).length + KO4.filter(koIsPlayed).length + KOSF.filter(koIsPlayed).length + KOFIN.filter(koIsPlayed).length;
   return groupDone+koDone;
 }
-function totalPredMatches(){return M.length+KO16.length+KO8.length+KO4.length+KOSF.length;}
+function totalPredMatches(){return M.length+KO16.length+KO8.length+KO4.length+KOSF.length+KOFIN.length;}
 function standings(){
   const rows=P.map((nm,pi)=>({nm,pi,pts:0,exact:0,gandif:0,gana:0,nada:0}));
   M.forEach((m,mi)=>{const r=scoreForMatch(m.idx); if(!PR[mi]||!hasBasicScore(r))return;
@@ -2000,6 +2009,8 @@ function standings(){
     P.forEach((nm,pi)=>{const c=category(KO4_PR[ki][pi].l,KO4_PR[ki][pi].v,r); if(c==='pend')return; rows[pi][c]++; rows[pi].pts+=catPts(c);});});
   KOSF.forEach((m,ki)=>{const r=koScoreForMatch(m); if(!KOSF_PR[ki]||!hasBasicScore(r))return;
     P.forEach((nm,pi)=>{const c=category(KOSF_PR[ki][pi].l,KOSF_PR[ki][pi].v,r); if(c==='pend')return; rows[pi][c]++; rows[pi].pts+=catPts(c);});});
+  KOFIN.forEach((m,ki)=>{const r=koScoreForMatch(m); if(!KOFIN_PR[ki]||!hasBasicScore(r))return;
+    P.forEach((nm,pi)=>{const c=category(KOFIN_PR[ki][pi].l,KOFIN_PR[ki][pi].v,r); if(c==='pend')return; rows[pi][c]++; rows[pi].pts+=catPts(c);});});
   rows.sort((a,b)=>b.pts-a.pts||b.exact-a.exact||b.gandif-a.gandif||a.nm.localeCompare(b.nm));
   return rows;
 }
@@ -2044,6 +2055,13 @@ function playerDetail(pi){
     if(c==='pend') totals.pend++; else {totals[c]++; totals.played++; totals.pts+=pts;}
     rows.push({type:'kosf',m,ki,pr,r,c,pts});
   });
+  KOFIN.forEach((m,ki)=>{
+    if(!KOFIN_PR[ki]||!KOFIN_PR[ki][pi]) return;
+    const pr=KOFIN_PR[ki][pi], r=koScoreForMatch(m)||{};
+    const c=category(pr.l,pr.v,r), pts=catPts(c);
+    if(c==='pend') totals.pend++; else {totals[c]++; totals.played++; totals.pts+=pts;}
+    rows.push({type:'kofin',m,ki,pr,r,c,pts});
+  });
   return {nm,totals,rows};
 }
 
@@ -2054,15 +2072,15 @@ function openPlayer(pi){
   const kpi=(lab,val)=>`<div class="pkpi"><div class="v">${val}</div><div class="l">${lab}</div></div>`;
   const list=d.rows.map(o=>{
     const m=o.m;
-    const isKo=o.type==='ko16'||o.type==='ko8'||o.type==='ko4'||o.type==='kosf';
-    const koLabel=o.type==='kosf'?'Semifinales':(o.type==='ko4'?'4tos':(o.type==='ko8'?'8vos':'16avos'));
+    const isKo=o.type==='ko16'||o.type==='ko8'||o.type==='ko4'||o.type==='kosf'||o.type==='kofin';
+    const koLabel=o.type==='kofin'?kofinLabel(m):(o.type==='kosf'?'Semifinales':(o.type==='ko4'?'4tos':(o.type==='ko8'?'8vos':'16avos')));
     const vinfo=isKo?'':matchVenueInfo(m);
     const mt=isKo?{}:(meta[m.idx]||{});
     const dt=isKo?`${koLabel} · válido hasta final del segundo tiempo`:(mt.date?new Date(mt.date).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):(m.time||''));
     const real=hasBasicScore(o.r)?`${o.r.l}-${o.r.v}`:'Pendiente';
     const official=(isKo&&o.r?.officialL!=null&&o.r?.officialV!=null&&(o.r.officialL!==o.r.l||o.r.officialV!==o.r.v))?`<span class="pill">Oficial ${o.r.officialL}-${o.r.officialV}</span>`:'';
     const ptsTxt=o.c==='pend'?'—':`+${o.pts} pts`;
-    const openAttr=o.type==='ko16'?` data-ko16="${o.ki}"`:(o.type==='ko8'?` data-ko8="${o.ki}"`:(o.type==='ko4'?` data-ko4="${o.ki}"`:(o.type==='kosf'?` data-kosf="${o.ki}"`:` data-open="${m.idx}"`)));
+    const openAttr=o.type==='ko16'?` data-ko16="${o.ki}"`:(o.type==='ko8'?` data-ko8="${o.ki}"`:(o.type==='ko4'?` data-ko4="${o.ki}"`:(o.type==='kosf'?` data-kosf="${o.ki}"`:(o.type==='kofin'?` data-kofin="${o.ki}"`:` data-open="${m.idx}"`))));
     const metaTxt=isKo?`${escHtml(m.id)} · ${koLabel} · 90' + descuentos`:`P${String(m.idx+1).padStart(2,'0')} · Grupo ${m.group}`;
     return `<div class="pmatch" data-c="${o.c}"${openAttr}>
       <div class="pmeta">${metaTxt}${dt?`<br>${dt}`:''}</div>
@@ -2476,6 +2494,7 @@ function koApiMatchToHardcoded(rec){
     {type:'ko8',arr:KO8,card:ko8LiveNowCardHTML},
     {type:'ko4',arr:KO4,card:ko4LiveNowCardHTML},
     {type:'kosf',arr:KOSF,card:kosfLiveNowCardHTML},
+    {type:'kofin',arr:KOFIN,card:kofinLiveNowCardHTML},
   ];
   for(const p of pools){
     const ki=p.arr.findIndex(km=>venuePairKey(km.home,km.away)===key);
@@ -2528,13 +2547,14 @@ function renderLiveNow(){
   const liveKo8Hard=KO8.map((km,ki)=>({type:'ko8',km,ki})).filter(o=>isKO8Live(o.ki));
   const liveKo4Hard=KO4.map((km,ki)=>({type:'ko4',km,ki})).filter(o=>isKO4Live(o.ki));
   const liveKOSFHard=KOSF.map((km,ki)=>({type:'kosf',km,ki})).filter(o=>isKOSFLive(o.ki));
+  const liveKOFINHard=KOFIN.map((km,ki)=>({type:'kofin',km,ki})).filter(o=>isKOFINLive(o.ki));
   const liveKoApi=koApiEntries().filter(koApiIsLive);
 
   // Evita duplicar: si un cruce API ya coincide con un KO hardcodeado, usamos la tarjeta con predicciones.
-  const hardKeys=new Set([...liveKo16Hard.map(({km})=>venuePairKey(km.home,km.away)),...liveKo8Hard.map(({km})=>venuePairKey(km.home,km.away)),...liveKo4Hard.map(({km})=>venuePairKey(km.home,km.away)),...liveKOSFHard.map(({km})=>venuePairKey(km.home,km.away))]);
+  const hardKeys=new Set([...liveKo16Hard.map(({km})=>venuePairKey(km.home,km.away)),...liveKo8Hard.map(({km})=>venuePairKey(km.home,km.away)),...liveKo4Hard.map(({km})=>venuePairKey(km.home,km.away)),...liveKOSFHard.map(({km})=>venuePairKey(km.home,km.away)),...liveKOFINHard.map(({km})=>venuePairKey(km.home,km.away))]);
   const apiOnly=liveKoApi.filter(rec=>!hardKeys.has(venuePairKey(koTeamName(rec.home),koTeamName(rec.away))));
 
-  if(!liveMatches.length && !liveKo16Hard.length && !liveKo8Hard.length && !liveKo4Hard.length && !liveKOSFHard.length && !apiOnly.length){
+  if(!liveMatches.length && !liveKo16Hard.length && !liveKo8Hard.length && !liveKo4Hard.length && !liveKOSFHard.length && !liveKOFINHard.length && !apiOnly.length){
     sec.classList.add('hide');
     wrap.innerHTML='';
     return;
@@ -2547,6 +2567,7 @@ function renderLiveNow(){
     ...liveKo8Hard.map(({ki})=>ko8LiveNowCardHTML(ki)),
     ...liveKo4Hard.map(({ki})=>ko4LiveNowCardHTML(ki)),
     ...liveKOSFHard.map(({ki})=>kosfLiveNowCardHTML(ki)),
+    ...liveKOFINHard.map(({ki})=>kofinLiveNowCardHTML(ki)),
     ...apiOnly.map(koApiLiveCardHTML)
   ].join('');
 }
@@ -2853,6 +2874,7 @@ function openKoApiMatch(id){
     if(hit.type==='ko8') return openKO8Match(hit.ki);
     if(hit.type==='ko4') return openKO4Match(hit.ki);
     if(hit.type==='kosf') return openKOSFMatch(hit.ki);
+    if(hit.type==='kofin') return openKOFINMatch(hit.ki);
   }
 
   document.querySelector('#modal .mcard').classList.add('wide');
@@ -3154,6 +3176,105 @@ function kosfCardsHTML(){
 }
 
 
+function kofinLabel(m){ return m?.label || (m?.kind==='third'?'3ro y 4to':'Final'); }
+function kofinOfficialMeta(km){ return koOfficialRecord(km)||{}; }
+function kofinDateObj(km){
+  const rec=kofinOfficialMeta(km);
+  if(!rec.date) return null;
+  const d=new Date(rec.date);
+  return Number.isNaN(d.getTime())?null:d;
+}
+function kofinDateText(km,mode='full'){
+  const d=kofinDateObj(km);
+  if(!d) return 'Fecha por confirmar';
+  return mode==='short'
+    ? d.toLocaleString('es-CL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+    : d.toLocaleString('es-CL',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+function kofinVenueText(km){
+  const rec=kofinOfficialMeta(km);
+  return rec.venue ? venueInfo(rec.venue) : '';
+}
+function kofinStatusText(ki){
+  const km=KOFIN[ki], rec=kofinOfficialMeta(km), st=String(rec.status||rec.rawStatus||'').toUpperCase();
+  if(koIsPlayed(km)) return 'Jugado';
+  if(rec.forcedLiveByTime) return 'En juego';
+  if(['IN_PLAY','PAUSED','LIVE','EXTRA_TIME','PENALTY_SHOOTOUT'].includes(st)) return 'En juego';
+  const d=kofinDateObj(km), now=new Date();
+  if(d && d<=now && now<=new Date(d.getTime()+165*60000)) return 'En juego';
+  return 'Próximo';
+}
+function kofinPredRowsHTML(ki,r){
+  return (KOFIN_PR[ki]||[]).map((pr,pi)=>{
+    const c=hasBasicScore(r)?category(pr.l,pr.v,r):'pend', pts=catPts(c);
+    return `<div class="kopred" data-c="${c}"><div><b>${escHtml(P[pi])}</b><small>"${escHtml(pr.raw)}"${pr.winner?` · ganador: ${escHtml(pr.winner)}`:''}</small></div><div class="kopnums"><span>${pr.l}-${pr.v}</span><em class="badge ${c}">${CATLABEL[c]}</em><strong>${c==='pend'?'—':`+${pts}`}</strong></div></div>`;
+  }).join('');
+}
+function kofinDateCard(ki){
+  const m=KOFIN[ki], r=koScoreForMatch(m), live=koLiveScoreForMatch(m), done=hasBasicScore(r), liveOn=kofinStatusText(ki)==='En juego', vinfo=kofinVenueText(m), status=kofinStatusText(ki);
+  const shown=done?r:(liveOn&&hasBasicScore(live)?live:null);
+  const scoreTxt=shown?`${shown.l} - ${shown.v}`:kofinDateText(m,'short');
+  const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Oficial: ${r.officialL}-${r.officialV} · Para la polla cuenta el marcador al cierre del 2° tiempo</div>`:'';
+  const liveNote=(!done&&liveOn)?`<div class="ko90note">Marcador provisional. Los puntos se cierran al final del segundo tiempo, incluyendo descuentos.</div>`:'';
+  return `<div class="dmatch ko16date" data-kofin="${ki}">
+    <div class="dmtop"><span class="gp">${escHtml(kofinLabel(m))}</span><span>${escHtml(m.id)}</span><span class="np">${escHtml(status)}</span></div>
+    <div class="dmrow">
+      <div class="dmt">${flag(m.hiso,m.hf,40)}<span class="nm">${escHtml(m.home)}</span></div>
+      <div class="dmsc${done?'':(liveOn?' live':' pend')}">${scoreTxt}</div>
+      <div class="dmt aw"><span class="nm">${escHtml(m.away)}</span>${flag(m.aiso,m.af,40)}</div>
+    </div>
+    ${vinfo?`<div class="dmven">📍 ${escHtml(vinfo)}</div>`:''}${official}${liveNote}
+    <div class="ko16preds">${kofinPredRowsHTML(ki,r)}</div>
+  </div>`;
+}
+function openKOFINMatch(ki){
+  const m=KOFIN[ki]; if(!m)return;
+  document.querySelector('#modal .mcard').classList.add('wide');
+  const r=koScoreForMatch(m), live=koLiveScoreForMatch(m), done=hasBasicScore(r), liveOn=kofinStatusText(ki)==='En juego', vinfo=kofinVenueText(m), status=kofinStatusText(ki);
+  const shown=done?r:(liveOn&&hasBasicScore(live)?live:null);
+  const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Resultado oficial: ${r.officialL}-${r.officialV}. Para la polla cuenta ${r.l}-${r.v} al cierre del segundo tiempo.</div>`:'';
+  const liveNote=(!done&&liveOn)?`<div class="ko90note">Marcador provisional: todavía no suma puntos. Se cerrará cuando termine el segundo tiempo, incluyendo descuentos.</div>`:'';
+  const h=`<div class="mhd"><div class="mt2">${flag(m.hiso,m.hf,80)}<span>${escHtml(m.home)}</span></div><div class="mvs">${shown?`${shown.l}-${shown.v}`:'vs'}<small>${escHtml(status)} · 90' + descuentos</small></div><div class="mt2">${flag(m.aiso,m.af,80)}<span>${escHtml(m.away)}</span></div></div><div class="minfo"><b>${kofinDateText(m)}</b>${vinfo?`<br>📍 ${escHtml(vinfo)}`:''}<br><b style="color:var(--gold)">Regla:</b> cuenta el marcador al final del segundo tiempo, es decir 90' + descuentos. Alargue y penales no modifican puntaje.</div>${official}${liveNote}<div class="ko16preds">${kofinPredRowsHTML(ki,r)}</div>`;
+  document.getElementById('mbody').innerHTML=h;
+  document.getElementById('modal').classList.add('on');
+}
+function kofinLiveNowCardHTML(ki){
+  const m=KOFIN[ki]; if(!m) return '';
+  const r=koScoreForMatch(m), live=koLiveScoreForMatch(m), done=hasBasicScore(r), liveOn=kofinStatusText(ki)==='En juego';
+  const shown=done?r:(liveOn&&hasBasicScore(live)?live:null);
+  const scoreTxt=shown?`${shown.l} - ${shown.v}`:kofinDateText(m,'short');
+  const rows=kofinPredRowsHTML(ki, shown||{});
+  const stateNote=done
+    ? `<div class="ko90note">Resultado cerrado para la polla: ${r.l}-${r.v} al cierre del segundo tiempo.</div>`
+    : `<div class="ko90note">Puntos provisorios con el marcador actual. Se confirmarán al terminar el segundo tiempo, incluyendo descuentos.</div>`;
+  return `<div class="dmatch ko16date live-card live-spotlight" data-kofin="${ki}">
+    <div class="dmtop"><span class="gp">${escHtml(kofinLabel(m))}</span><span>${escHtml(m.id)}</span><span class="np">${done?'Jugado':'En juego'}</span></div>
+    <div class="dmrow">
+      <div class="dmt">${flag(m.hiso,m.hf,40)}<span class="nm">${escHtml(m.home)}</span></div>
+      <div class="dmsc${done?'':' live'}">${scoreTxt}</div>
+      <div class="dmt aw"><span class="nm">${escHtml(m.away)}</span>${flag(m.aiso,m.af,40)}</div>
+    </div>
+    ${stateNote}
+    <div class="ko16preds">${rows}</div>
+  </div>`;
+}
+function isKOFINLive(ki){
+  const km=KOFIN[ki];
+  if(!km || koIsPlayed(km)) return false;
+  return kofinStatusText(ki)==='En juego';
+}
+function kofinCardsHTML(){
+  const cards=KOFIN.map((m,ki)=>{
+    const r=koScoreForMatch(m);
+    const real=hasBasicScore(r)?`${r.l}-${r.v}`:'Pendiente';
+    const official=(r.officialL!=null&&r.officialV!=null&&(r.officialL!==r.l||r.officialV!==r.v))?`<div class="ko90note">Oficial: ${r.officialL}-${r.officialV} · Para la polla cuenta 90' + descuentos</div>`:'';
+    const rows=(KOFIN_PR[ki]||[]).map((pr,pi)=>{const c=category(pr.l,pr.v,r), pts=catPts(c); return `<div class="kopred" data-c="${c}"><div><b>${escHtml(P[pi])}</b><small>"${escHtml(pr.raw)}"${pr.winner?` · ganador: ${escHtml(pr.winner)}`:''}</small></div><div class="kopnums"><span>${pr.l}-${pr.v}</span><em class="badge ${c}">${CATLABEL[c]}</em><strong>${c==='pend'?'—':`+${pts}`}</strong></div></div>`;}).join('');
+    return `<article class="ko16card" data-kofin="${ki}"><div class="ko16top"><span>${escHtml(m.id)}</span><b>${escHtml(kofinLabel(m))} · válido 90' + descuentos</b><i>${real}</i></div><div class="ko16teams"><div>${flag(m.hiso,m.hf,50)}<b>${escHtml(m.home)}</b></div><span>vs</span><div><b>${escHtml(m.away)}</b>${flag(m.aiso,m.af,50)}</div></div>${official}<div class="ko16preds">${rows}</div></article>`;
+  }).join('');
+  return `<div class="ko16wrap"><div class="section-h"><h2>Polla 3ro y 4to / Final · resultado al final del segundo tiempo</h2><div class="ln"></div></div><div class="bnote"><b>Regla:</b> los puntos se asignan solo con el marcador al término del segundo tiempo (90' + descuentos). Alargue y penales no modifican el puntaje de la polla.</div><div class="ko16grid">${cards}</div></div>`;
+}
+
+
 function nextPollaItemsWindow(){
   const now=new Date(), until=new Date(now.getTime()+24*60*60*1000);
   const groups=M.filter(m=>!isPlayed(m)&&meta[m.idx]?.date).map(m=>({type:'group',m,d:new Date(meta[m.idx].date)}));
@@ -3161,7 +3282,8 @@ function nextPollaItemsWindow(){
   const ko8s=KO8.map((km,ki)=>({type:'ko8',km,ki,d:ko8DateObj(km)})).filter(x=>x.d && !koIsPlayed(x.km));
   const ko4s=KO4.map((km,ki)=>({type:'ko4',km,ki,d:ko4DateObj(km)})).filter(x=>x.d && !koIsPlayed(x.km));
   const kosfs=KOSF.map((km,ki)=>({type:'kosf',km,ki,d:kosfDateObj(km)})).filter(x=>x.d && !koIsPlayed(x.km));
-  const allKos=[...kos,...ko8s,...ko4s,...kosfs];
+  const kofins=KOFIN.map((km,ki)=>({type:'kofin',km,ki,d:kofinDateObj(km)})).filter(x=>x.d && !koIsPlayed(x.km));
+  const allKos=[...kos,...ko8s,...ko4s,...kosfs,...kofins];
   let arr=[...groups,...allKos].filter(x=>x.d>=now&&x.d<=until).sort((a,b)=>a.d-b.d).slice(0,5);
   if(!arr.length){
     arr=[...groups,...allKos].filter(x=>x.d&&x.d>=now).sort((a,b)=>a.d-b.d).slice(0,5);
@@ -3188,6 +3310,10 @@ function radarPollaItemHTML(item){
     const m=item.km, v=kosfVenueText(m);
     return `<div class="irow radar-row" data-kosf="${item.ki}" title="Abrir detalle del partido"><span><span class="radar-flags">${flag(m.hiso,m.hf,40)}<b>vs</b>${flag(m.aiso,m.af,40)}</span><div class="mut">${kosfDateText(m,'short')} · Semifinales · válido 90' + descuentos${v?` · ${escHtml(v)}`:''}</div></span><span class="val warn">Abrir</span></div>`;
   }
+  if(item.type==='kofin'){
+    const m=item.km, v=kofinVenueText(m);
+    return `<div class="irow radar-row" data-kofin="${item.ki}" title="Abrir detalle del partido"><span><span class="radar-flags">${flag(m.hiso,m.hf,40)}<b>vs</b>${flag(m.aiso,m.af,40)}</span><div class="mut">${kofinDateText(m,'short')} · ${escHtml(kofinLabel(m))} · válido 90' + descuentos${v?` · ${escHtml(v)}`:''}</div></span><span class="val warn">Abrir</span></div>`;
+  }
   const m=item.m, v=matchVenueInfo(m);
   return radarMatchHTML(m,`${matchDateText(m,'short')} · Grupo ${m.group}${v?` · ${escHtml(v)}`:''}`,'Abrir','warn');
 }
@@ -3211,7 +3337,8 @@ function koFilterControlsHTML(hasApi){
     ['16avos','16avos'],
     ['8vos','8vos'],
     ['4tos','4tos'],
-    ['semis','Semifinales']
+    ['semis','Semifinales'],
+    ['finales','Finales']
   ];
   return `<div class="ko-filterbar">
     <div class="ko-filter-tabs">${phases.map(([v,t])=>`<button class="kotab ${koPhaseFilter===v?'on':''}" type="button" data-kophase="${v}">${t}</button>`).join('')}</div>
@@ -3250,7 +3377,8 @@ function renderKO(){
     koPhaseWrap('16avos',ko16CardsHTML()),
     koPhaseWrap('8vos',ko8CardsHTML()),
     koPhaseWrap('4tos',ko4CardsHTML()),
-    koPhaseWrap('semis',kosfCardsHTML())
+    koPhaseWrap('semis',kosfCardsHTML()),
+    koPhaseWrap('finales',kofinCardsHTML())
   ].join('');
   applyKOFilters();
 }
@@ -3281,6 +3409,7 @@ function renderDate(){
   KO8.forEach((km,ki)=>{const d=ko8DateObj(km); if(d)addItem(d,{type:'ko8',km,ki});});
   KO4.forEach((km,ki)=>{const d=ko4DateObj(km); if(d)addItem(d,{type:'ko4',km,ki});});
   KOSF.forEach((km,ki)=>{const d=kosfDateObj(km); if(d)addItem(d,{type:'kosf',km,ki});});
+  KOFIN.forEach((km,ki)=>{const d=kofinDateObj(km); if(d)addItem(d,{type:'kofin',km,ki});});
   const keys=Object.keys(buckets).sort();
   if(!keys.length){ nav.innerHTML=''; wrap.innerHTML='<div class="koempty">Las fechas aparecen acá cuando corra el Action actualizado. Para 16avos, la información viene desde /polla/ko en Firebase.</div>'; return; }
   const today=new Date().toLocaleDateString('en-CA');
@@ -3288,7 +3417,7 @@ function renderDate(){
   nav.innerHTML=keys.map(k=>{const d=buckets[k].d,c=buckets[k].items.length;
     return `<button class="datechip${k===selDate?' on':''}" data-d="${k}"><div class="m">${DAYS[d.getDay()]}</div><div class="d">${d.getDate()}</div><div class="m">${MON[d.getMonth()]}</div><div class="c">${c} part.</div></button>`;}).join('');
   const items=buckets[selDate].items.sort((a,b)=>a.d-b.d);
-  wrap.innerHTML=`<div class="daygrid">${items.map(it=>it.type==='ko16'?ko16DateCard(it.ki):(it.type==='ko8'?ko8DateCard(it.ki):(it.type==='ko4'?ko4DateCard(it.ki):(it.type==='kosf'?kosfDateCard(it.ki):dmatchCard(it.mi))))).join('')}</div>`;
+  wrap.innerHTML=`<div class="daygrid">${items.map(it=>it.type==='ko16'?ko16DateCard(it.ki):(it.type==='ko8'?ko8DateCard(it.ki):(it.type==='ko4'?ko4DateCard(it.ki):(it.type==='kosf'?kosfDateCard(it.ki):(it.type==='kofin'?kofinDateCard(it.ki):dmatchCard(it.mi)))))).join('')}</div>`;
 }
 function openMatch(idx){
   document.querySelector('#modal .mcard').classList.remove('wide');
@@ -3412,7 +3541,7 @@ document.getElementById('kowrap').addEventListener('click',e=>{
 /* ---------- eventos ---------- */
 document.getElementById('ranks').addEventListener('click',e=>{const b=e.target.closest('[data-player]');if(b)openPlayer(+b.dataset.player);});
 document.getElementById('ranks').addEventListener('keydown',e=>{const b=e.target.closest('[data-player]');if(b&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openPlayer(+b.dataset.player);}});
-document.getElementById('mbody').addEventListener('click',e=>{const kosf=e.target.closest('[data-kosf]');if(kosf){openKOSFMatch(+kosf.dataset.kosf);return;} const ko4=e.target.closest('[data-ko4]');if(ko4){openKO4Match(+ko4.dataset.ko4);return;} const ko8=e.target.closest('[data-ko8]');if(ko8){openKO8Match(+ko8.dataset.ko8);return;} const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const b=e.target.closest('[data-open]');if(b)openMatch(+b.dataset.open);});
+document.getElementById('mbody').addEventListener('click',e=>{const kofin=e.target.closest('[data-kofin]');if(kofin){openKOFINMatch(+kofin.dataset.kofin);return;} const kosf=e.target.closest('[data-kosf]');if(kosf){openKOSFMatch(+kosf.dataset.kosf);return;} const ko4=e.target.closest('[data-ko4]');if(ko4){openKO4Match(+ko4.dataset.ko4);return;} const ko8=e.target.closest('[data-ko8]');if(ko8){openKO8Match(+ko8.dataset.ko8);return;} const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const b=e.target.closest('[data-open]');if(b)openMatch(+b.dataset.open);});
 const navWrap=document.getElementById('navWrap');
 const navTrigger=document.getElementById('navTrigger');
 const navCurrent=document.getElementById('navCurrent');
@@ -3453,16 +3582,16 @@ document.querySelector('.modetoggle').addEventListener('click',e=>{const b=e.tar
   if(viewMode==='fecha')renderDate();
 });
 document.getElementById('datenav').addEventListener('click',e=>{const b=e.target.closest('[data-d]');if(b){selDate=b.dataset.d;renderDate();}});
-document.getElementById('datematches').addEventListener('click',e=>{const ksf=e.target.closest('[data-kosf]');if(ksf){openKOSFMatch(+ksf.dataset.kosf);return;} const k4=e.target.closest('[data-ko4]');if(k4){openKO4Match(+k4.dataset.ko4);return;} const k8=e.target.closest('[data-ko8]');if(k8){openKO8Match(+k8.dataset.ko8);return;} const k=e.target.closest('[data-ko16]');if(k){openKO16Match(+k.dataset.ko16);return;} const b=e.target.closest('[data-open]');if(b)openMatch(+b.dataset.open);});
+document.getElementById('datematches').addEventListener('click',e=>{const kfin=e.target.closest('[data-kofin]');if(kfin){openKOFINMatch(+kfin.dataset.kofin);return;} const ksf=e.target.closest('[data-kosf]');if(ksf){openKOSFMatch(+ksf.dataset.kosf);return;} const k4=e.target.closest('[data-ko4]');if(k4){openKO4Match(+k4.dataset.ko4);return;} const k8=e.target.closest('[data-ko8]');if(k8){openKO8Match(+k8.dataset.ko8);return;} const k=e.target.closest('[data-ko16]');if(k){openKO16Match(+k.dataset.ko16);return;} const b=e.target.closest('[data-open]');if(b)openMatch(+b.dataset.open);});
 document.getElementById('gdetail').addEventListener('click',e=>{if(e.target.closest('input,button,select,textarea,label')) return; const b=e.target.closest('[data-open]');if(b){openMatch(+b.dataset.open);}});
 document.getElementById('teamchips').addEventListener('click',e=>{const b=e.target.closest('[data-team]');if(b){selTeam=b.dataset.team;renderTeamExplorer();}});
 document.getElementById('teampanel').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(b){openMatch(+b.dataset.open);}});
 document.getElementById('realGroupChips').addEventListener('click',e=>{const b=e.target.closest('[data-real-group]');if(b){selRealGroup=b.dataset.realGroup;selRealTeam=null;renderRealTeamExplorer();}});
 document.getElementById('realTeamChips').addEventListener('click',e=>{const b=e.target.closest('[data-real-team-chip]');if(b){selRealTeam=b.dataset.realTeamChip;renderRealTeamExplorer();}});
 document.getElementById('realTeamPanel').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(b){openMatch(+b.dataset.open);}});
-document.getElementById('liveNowContent').addEventListener('click',e=>{const kosf=e.target.closest('[data-kosf]');if(kosf){openKOSFMatch(+kosf.dataset.kosf);return;} const ko4=e.target.closest('[data-ko4]');if(ko4){openKO4Match(+ko4.dataset.ko4);return;} const ko8=e.target.closest('[data-ko8]');if(ko8){openKO8Match(+ko8.dataset.ko8);return;} const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const koid=e.target.closest('[data-koid]');if(koid){openKoApiMatch(koid.dataset.koid);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
+document.getElementById('liveNowContent').addEventListener('click',e=>{const kofin=e.target.closest('[data-kofin]');if(kofin){openKOFINMatch(+kofin.dataset.kofin);return;} const kosf=e.target.closest('[data-kosf]');if(kosf){openKOSFMatch(+kosf.dataset.kosf);return;} const ko4=e.target.closest('[data-ko4]');if(ko4){openKO4Match(+ko4.dataset.ko4);return;} const ko8=e.target.closest('[data-ko8]');if(ko8){openKO8Match(+ko8.dataset.ko8);return;} const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const koid=e.target.closest('[data-koid]');if(koid){openKoApiMatch(koid.dataset.koid);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
 document.getElementById('viewReal').addEventListener('click',e=>{const b=e.target.closest('tr[data-real-team]');if(b){selRealGroup=b.dataset.realGroup;selRealTeam=b.dataset.realTeam;renderRealTeamExplorer();document.getElementById('realTeamExplorer').scrollIntoView({behavior:'smooth',block:'start'});}});
-document.getElementById('pollaInsights').addEventListener('click',e=>{const kosf=e.target.closest('[data-kosf]');if(kosf){openKOSFMatch(+kosf.dataset.kosf);return;} const ko4=e.target.closest('[data-ko4]');if(ko4){openKO4Match(+ko4.dataset.ko4);return;} const ko8=e.target.closest('[data-ko8]');if(ko8){openKO8Match(+ko8.dataset.ko8);return;} const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
+document.getElementById('pollaInsights').addEventListener('click',e=>{const kofin=e.target.closest('[data-kofin]');if(kofin){openKOFINMatch(+kofin.dataset.kofin);return;} const kosf=e.target.closest('[data-kosf]');if(kosf){openKOSFMatch(+kosf.dataset.kosf);return;} const ko4=e.target.closest('[data-ko4]');if(ko4){openKO4Match(+ko4.dataset.ko4);return;} const ko8=e.target.closest('[data-ko8]');if(ko8){openKO8Match(+ko8.dataset.ko8);return;} const ko16=e.target.closest('[data-ko16]');if(ko16){openKO16Match(+ko16.dataset.ko16);return;} const op=e.target.closest('[data-open]');if(op){openMatch(+op.dataset.open);return;} const pl=e.target.closest('[data-player]');if(pl){openPlayer(+pl.dataset.player);}});
 document.getElementById('pollaInsights').addEventListener('change',e=>{if(e.target.id==='insightPlayerSel'){selInsightPlayer=+e.target.value;renderInsights();} if(e.target.id==='duelA'){selDuelA=+e.target.value;renderInsights();} if(e.target.id==='duelB'){selDuelB=+e.target.value;renderInsights();}});
 document.getElementById('mclose').addEventListener('click',closeMatch);
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeMatch();});
